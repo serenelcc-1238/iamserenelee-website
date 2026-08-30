@@ -49,9 +49,9 @@
         <div class="field">
           <label>What are you buying?</label>
           <div class="ptype-row" id="ptypeRow">
-            <label class="ptype-option"><input type="radio" name="ptype" value="private" checked> Private Property</label>
-            <label class="ptype-option"><input type="radio" name="ptype" value="hdb"> HDB Flat</label>
-            <label class="ptype-option"><input type="radio" name="ptype" value="ec"> Executive Condo (EC)</label>
+            <label class="ptype-option"><input type="radio" name="ptype" value="hdb" checked> Resale HDB Flat</label>
+            <label class="ptype-option"><input type="radio" name="ptype" value="ec"> Exec Condo</label>
+            <label class="ptype-option"><input type="radio" name="ptype" value="private"> Resale Private Property</label>
           </div>
         </div>
 
@@ -59,8 +59,8 @@
           <div class="field">
             <label>Loan type</label>
             <div class="ptype-row">
-              <label class="ptype-option"><input type="radio" name="loantype" value="bank" checked> Bank Loan</label>
-              <label class="ptype-option"><input type="radio" name="loantype" value="hdbloan"> HDB Concessionary Loan</label>
+              <label class="ptype-option"><input type="radio" name="loantype" value="hdbloan" checked> HDB Concessionary Loan</label>
+              <label class="ptype-option"><input type="radio" name="loantype" value="bank"> Bank Loan</label>
             </div>
             <div class="hint">HDB loans use a fixed 2.6% p.a. rate and only MSR (30%) applies — no TDSR, and no minimum cash downpayment. Only available for HDB flats, not ECs.</div>
           </div>
@@ -426,9 +426,9 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
 
   /* --- Render main results --- */
   document.getElementById('resMaxPriceLabel').textContent =
-    propertyType === 'hdb' ? 'Estimated maximum HDB flat price' :
+    propertyType === 'hdb' ? 'Estimated maximum resale HDB flat price' :
     propertyType === 'ec'  ? 'Estimated maximum EC price' :
-                              'Estimated maximum private property price';
+                              'Estimated maximum resale private property price';
   document.getElementById('resMaxPrice').textContent = fmt(maxPrice);
   document.getElementById('resMaxPriceRange').textContent =
     `Range: ${fmt(maxPrice*0.9)} – ${fmt(maxPrice)}`;
@@ -486,32 +486,41 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
     const instalmentAtTarget = targetLoan * r / (1 - Math.pow(1 + r, -n));
     const incomeFits = instalmentAtTarget <= availableForMortgage + 1;
 
-    let cashFits = true, cashNeededAtTarget = null;
-    if (cashProvided) {
-      const minCashAtTarget = targetPrice * minCashPct;
-      const cpfOrCashAtTarget = targetPrice * (DOWNPAYMENT_PCT - minCashPct);
-      const cpfAppliedAtTarget = Math.min(totalOA, cpfOrCashAtTarget);
-      cashNeededAtTarget = minCashAtTarget + (cpfOrCashAtTarget - cpfAppliedAtTarget);
-      cashFits = cashNeededAtTarget <= cashOnHand + 1;
-    }
+    // Cash top-up breakdown at the target price — computed regardless of whether
+    // cash-on-hand was entered, since this answers "how much cash do I need to
+    // top up" directly, using whatever CPF OA was provided.
+    const downpaymentAtTarget = targetPrice * DOWNPAYMENT_PCT;
+    const minCashAtTarget = targetPrice * minCashPct;
+    const cpfOrCashAtTarget = targetPrice * (DOWNPAYMENT_PCT - minCashPct);
+    const cpfAppliedAtTarget = Math.min(totalOA, cpfOrCashAtTarget);
+    const cashNeededAtTarget = minCashAtTarget + (cpfOrCashAtTarget - cpfAppliedAtTarget);
+
+    let cashFits = true;
+    if (cashProvided) cashFits = cashNeededAtTarget <= cashOnHand + 1;
+
+    const breakdown = `<div class="target-breakdown"><strong>At ${fmt(targetPrice)}:</strong> total downpayment is ${fmt(downpaymentAtTarget)} (25%). ` +
+      `Your CPF OA covers ${fmt(cpfAppliedAtTarget)}, leaving <strong>${fmt(cashNeededAtTarget)} in cash to top up</strong>.` +
+      (cashProvided
+        ? (cashFits
+            ? ` That's within your stated ${fmt(cashOnHand)} cash on hand, with ${fmt(Math.max(0, cashOnHand - cashNeededAtTarget))} to spare.`
+            : ` That's ${fmt(cashNeededAtTarget - cashOnHand)} more than your stated ${fmt(cashOnHand)} cash on hand.`)
+        : '') + `</div>`;
 
     const fits = incomeFits && cashFits;
     fitBox.style.display = 'block';
     if (fits){
       fitBox.className = 'fit-box fit-good';
-      fitBox.innerHTML = `<strong>Good news:</strong> your target of ${fmt(targetPrice)} looks within your estimated affordability, with an estimated monthly instalment of ${fmt(instalmentAtTarget)}` +
-        (cashProvided ? ` and an estimated cash outlay of ${fmt(cashNeededAtTarget)}.` : ` at the stress-test rate.`);
+      fitBox.innerHTML = breakdown + `<div style="margin-top:10px;"><strong>Good news:</strong> your target of ${fmt(targetPrice)} looks within your estimated income affordability too, with an estimated monthly instalment of ${fmt(instalmentAtTarget)}.</div>`;
     } else if (!incomeFits && !cashFits){
       fitBox.className = 'fit-box fit-warn';
-      fitBox.innerHTML = `<strong>Worth a closer look:</strong> your target of ${fmt(targetPrice)} needs both a higher income to service the loan and more cash/CPF than you currently have on hand (about ${fmt(cashNeededAtTarget)} needed). This is exactly what Serene can help you plan around.`;
+      fitBox.innerHTML = breakdown + `<div style="margin-top:10px;"><strong>Worth a closer look:</strong> this target needs both a higher income to service the loan and more cash/CPF than you currently have on hand. This is exactly what Serene can help you plan around.</div>`;
     } else if (!incomeFits){
-      const gap = maxPrice > 0 ? (targetPrice - incomeMaxPrice) : targetPrice;
+      const gap = incomeMaxPrice > 0 ? (targetPrice - incomeMaxPrice) : targetPrice;
       fitBox.className = 'fit-box fit-warn';
-      fitBox.innerHTML = `<strong>Worth a closer look:</strong> your target of ${fmt(targetPrice)} is above what your income can service by roughly ${fmt(gap)}. A longer runway on existing debt, an adjusted target, or a co-buyer's income could help close the gap.`;
+      fitBox.innerHTML = breakdown + `<div style="margin-top:10px;"><strong>Worth a closer look:</strong> your target of ${fmt(targetPrice)} is above what your income can service by roughly ${fmt(gap)}. A longer runway on existing debt, an adjusted target, or a co-buyer's income could help close the gap.</div>`;
     } else {
-      const cashGap = cashNeededAtTarget - cashOnHand;
       fitBox.className = 'fit-box fit-warn';
-      fitBox.innerHTML = `<strong>Worth a closer look:</strong> your income can service your target of ${fmt(targetPrice)}, but you'd need about ${fmt(cashGap)} more in cash/CPF than you currently have on hand (${fmt(cashNeededAtTarget)} needed vs. ${fmt(cashOnHand)} available). Selling an existing property, a longer savings runway, or a lower target could help close this gap.`;
+      fitBox.innerHTML = breakdown + `<div style="margin-top:10px;"><strong>Worth a closer look:</strong> your income can service this target, but the cash top-up above is more than you currently have on hand. Selling an existing property, a longer savings runway, or a lower target could help close this gap.</div>`;
     }
   } else {
     fitBox.style.display = 'none';
@@ -557,7 +566,7 @@ function generatePdf(lead){
     doc.setFontSize(12);
     let y = 40;
     const line = (label, val) => { doc.text(`${label}: ${val}`, 14, y); y += 8; };
-    const ptypeLabel = lastResults.propertyType === 'hdb' ? 'HDB Flat' : lastResults.propertyType === 'ec' ? 'Executive Condo (EC)' : 'Private Property';
+    const ptypeLabel = lastResults.propertyType === 'hdb' ? 'Resale HDB Flat' : lastResults.propertyType === 'ec' ? 'Exec Condo' : 'Resale Private Property';
     line('Property type', ptypeLabel);
     line('Loan type', lastResults.loanType);
     line('Estimated maximum property price', fmt(lastResults.maxPrice));
