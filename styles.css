@@ -204,8 +204,7 @@ header{
 .about-grid{display:grid;grid-template-columns:300px 1fr;gap:46px;align-items:start;}
 @media(max-width:760px){.about-grid{grid-template-columns:1fr;}}
 .about-photo{border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line);width:100%;max-width:300px;}
-.about-copy .cea{font-size:.85rem;color:var(--muted);margin-bottom:16px;font-weight:600;}
-.about-copy p{line-height:1.75;font-size:1rem;max-width:620px;}
+.about-copy p{line-height:1.55;font-size:1rem;max-width:620px;}
 
 /* CARE mission list */
 ul.care-list{margin:14px 0 22px;padding-left:20px;max-width:620px;}
