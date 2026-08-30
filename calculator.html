@@ -76,6 +76,17 @@
           </div>
         </div>
 
+        <div class="field">
+          <label for="b-variable">Your annual bonus / commission / freelance income (SGD)</label>
+          <input type="number" id="b-variable" min="0" step="100" placeholder="e.g. 15000">
+          <div class="hint">Leave blank if none. Only a portion of this counts toward your loan eligibility.</div>
+        </div>
+
+        <div class="field">
+          <label for="b-oa">Your CPF Ordinary Account (OA) balance (SGD)</label>
+          <input type="number" id="b-oa" min="0" step="100" placeholder="e.g. 60000">
+        </div>
+
         <div class="checkbox-row">
           <input type="checkbox" id="has-cobuyer">
           <label for="has-cobuyer">I'm buying with a co-buyer (spouse/partner)</label>
@@ -102,12 +113,6 @@
           </div>
         </div>
 
-        <div class="field">
-          <label for="b-variable">Your annual bonus / commission / freelance income (SGD)</label>
-          <input type="number" id="b-variable" min="0" step="100" placeholder="e.g. 15000">
-          <div class="hint">Leave blank if none. Only a portion of this counts toward your loan eligibility.</div>
-        </div>
-
         <div class="live-total" id="incomeTotalDisplay">Total Monthly Assessable Income <strong>S$0</strong></div>
 
         <div class="field-row">
@@ -122,11 +127,6 @@
         </div>
 
         <div class="live-total" id="debtTotalDisplay">Total Monthly Debt Assessment <strong>S$0</strong></div>
-
-        <div class="field">
-          <label for="b-oa">Your CPF Ordinary Account (OA) balance (SGD)</label>
-          <input type="number" id="b-oa" min="0" step="100" placeholder="e.g. 60000">
-        </div>
 
         <div class="field">
           <label for="cash-on-hand">Cash on hand available for the purchase (SGD)</label>
@@ -659,7 +659,14 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
     totalCashNeeded, downpaymentTotal, downpaymentPct: (downpaymentPct*100).toFixed(0), cpfApplied, tenureYears, targetPrice,
     hdbPrice: hdbSkip ? null : hdbPrice,
     propertyType, loanType: usesHdbLoan ? 'HDB Concessionary Loan' : 'Bank Loan', cappedBy: cappedByLabel,
-    cashOnHand: cashProvided ? cashOnHand : null, cashBinding
+    cashOnHand: cashProvided ? cashOnHand : null, cashBinding,
+    // Raw client inputs — stashed here so the lead payload can send exactly what the
+    // client typed in, not just the computed results.
+    bIncome, bAge, bVariable: bVariable || null,
+    hasCB, cbIncome: hasCB ? cbIncome : null, cbAge: hasCB ? cbAge : null, cbVariable: hasCB ? (cbVariable || null) : null,
+    bOA: bOA || null, cbOA: hasCB ? (cbOA || null) : null,
+    carLoan: num('car-loan') || null, otherDebt: num('other-debt') || null,
+    loanRatePct: (loanRate*100).toFixed(2), ltvPct: (ltv*100).toFixed(0)
   };
 
   document.getElementById('resultsPanel').classList.add('show');
@@ -748,7 +755,27 @@ document.getElementById('leadForm').addEventListener('submit', function(e){
     monthlyMortgage: lastResults ? Math.round(lastResults.monthlyMortgage) : '',
     cashNeeded: lastResults ? Math.round(lastResults.totalCashNeeded) : '',
     targetPrice: lastResults && lastResults.targetPrice ? Math.round(lastResults.targetPrice) : '',
-    topic: lastResults ? `${lastResults.propertyType.toUpperCase()} / ${lastResults.loanType}` : ''
+    topic: lastResults ? `${lastResults.propertyType.toUpperCase()} / ${lastResults.loanType}` : '',
+    // What the client actually typed into the form — sent as its own fields so
+    // every input shows up as a column in the Sheet, not just the results.
+    propertyType: lastResults ? (lastResults.propertyType === 'hdb' ? 'Resale HDB Flat' : 'Exec Condo') : '',
+    loanType: lastResults ? lastResults.loanType : '',
+    buyerIncome: lastResults ? lastResults.bIncome : '',
+    buyerAge: lastResults ? lastResults.bAge : '',
+    buyerVariableIncome: lastResults && lastResults.bVariable ? lastResults.bVariable : '',
+    hasCobuyer: lastResults ? (lastResults.hasCB ? 'Yes' : 'No') : '',
+    cobuyerIncome: lastResults && lastResults.cbIncome ? lastResults.cbIncome : '',
+    cobuyerAge: lastResults && lastResults.cbAge ? lastResults.cbAge : '',
+    cobuyerVariableIncome: lastResults && lastResults.cbVariable ? lastResults.cbVariable : '',
+    buyerCpfOA: lastResults && lastResults.bOA ? lastResults.bOA : '',
+    cobuyerCpfOA: lastResults && lastResults.cbOA ? lastResults.cbOA : '',
+    carLoan: lastResults && lastResults.carLoan ? lastResults.carLoan : '',
+    otherDebt: lastResults && lastResults.otherDebt ? lastResults.otherDebt : '',
+    cashOnHand: lastResults && lastResults.cashOnHand ? lastResults.cashOnHand : '',
+    currentHdbPrice: lastResults && lastResults.hdbPrice ? lastResults.hdbPrice : '',
+    loanTenureYears: lastResults ? lastResults.tenureYears : '',
+    interestRatePct: lastResults ? lastResults.loanRatePct : '',
+    ltvPct: lastResults ? lastResults.ltvPct : ''
   };
 
   submitLead(lead, this, errorEl, document.getElementById('thankYou'), true);
