@@ -176,7 +176,29 @@
       <!-- RESULTS -->
       <div id="resultsPanel">
         <div class="divider"></div>
+
+        <div class="scenario-grid">
+          <div class="scenario-card">
+            <div class="scenario-card-title" id="scn1Title">Scenario 1 — Based on Income (MSR)</div>
+            <div class="scenario-line"><span>Max Loan Amount</span><strong id="scn1LoanEl">S$0</strong></div>
+            <div class="scenario-line"><span id="scn1PriceLabel">Max HDB Purchase Price</span><strong id="scn1PriceEl">S$0</strong></div>
+            <div class="scenario-line"><span id="scn1DownpaymentLabel">Downpayment Required (25%)</span><strong id="scn1DownpaymentEl">S$0</strong></div>
+            <div class="scenario-line"><span>Your Cash + CPF Available</span><strong id="scn1FundsEl">S$0</strong></div>
+            <div class="scenario-line scenario-line-highlight"><span id="scn1GapLabelEl">Shortfall</span><strong id="scn1GapEl">S$0</strong></div>
+          </div>
+          <div class="scenario-card" id="scenario2Card">
+            <div class="scenario-card-title" id="scn2Title">Scenario 2 — Based on Cash/CPF</div>
+            <div id="scn2Content">
+              <div class="scenario-line"><span id="scn2PriceLabel">Max HDB Purchase Price</span><strong id="scn2PriceEl">S$0</strong></div>
+              <div class="scenario-line"><span>Resulting Loan Amount</span><strong id="scn2LoanEl">S$0</strong></div>
+              <div class="scenario-line"><span>Resulting Monthly Instalment</span><strong id="scn2MonthlyEl">S$0</strong></div>
+            </div>
+            <div class="scenario-note" id="scn2Placeholder" style="display:none;">Enter Cash on hand above to see this scenario.</div>
+          </div>
+        </div>
+
         <div class="result-hero">
+          <div class="sub" id="recommendationLabel">Recommended affordability &mdash; whichever scenario is lower</div>
           <div class="sub" id="resMaxLoanLabel">Estimated maximum HDB loan amount</div>
           <div class="figure" id="resMaxLoan">S$0</div>
           <div class="sub" id="resMaxLoanRange">Range: S$0 &ndash; S$0</div>
@@ -546,10 +568,11 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
      Whichever constraint gives the lower price is the real cash-based ceiling. */
   let maxPrice = incomeMaxPrice;
   let cashBinding = false;
+  let cashMaxPrice = null; // hoisted so Scenario 2 can be displayed even when it doesn't end up binding
   if (cashProvided) {
     const byCashFloor = minCashPct > 0 ? (cashOnHand / minCashPct) : Infinity;
     const byTotalFunds = (cashOnHand + totalOA) / downpaymentPct;
-    const cashMaxPrice = Math.max(0, Math.min(byCashFloor, byTotalFunds));
+    cashMaxPrice = Math.max(0, Math.min(byCashFloor, byTotalFunds));
     if (cashMaxPrice < incomeMaxPrice) {
       maxPrice = cashMaxPrice;
       cashBinding = true;
@@ -570,6 +593,72 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
   const cpfApplied = Math.min(totalOA, cpfOrCashPortion);
   const shortfall = cpfOrCashPortion - cpfApplied;
   const totalCashNeeded = minCash + shortfall;
+
+  /* --- Two-scenario breakdown (Income/MSR vs Cash/CPF) ---
+     Shown side by side so it's transparent which one is the binding
+     constraint, instead of just silently taking the lower figure. */
+  // Scenario 1: what income alone (MSR, or MSR+TDSR for a bank loan) supports —
+  // ignoring whether the buyer actually has the cash/CPF to fund that downpayment.
+  const scn1Price = incomeMaxPrice;
+  const scn1Loan = maxLoanQuantum;
+  const scn1Downpayment = incomeMaxPrice * downpaymentPct;
+  const scn1MinCash = incomeMaxPrice * minCashPct;
+  const scn1CpfOrCash = incomeMaxPrice * (downpaymentPct - minCashPct);
+  const scn1CpfApplied = Math.min(totalOA, scn1CpfOrCash);
+  const scn1CashNeeded = scn1MinCash + (scn1CpfOrCash - scn1CpfApplied);
+  const scn1FundsAvailable = (cashProvided ? cashOnHand : 0) + totalOA;
+  const scn1Gap = scn1CashNeeded - (cashProvided ? cashOnHand : 0);
+
+  // Scenario 2: what the buyer's actual cash + CPF can fund as a downpayment,
+  // regardless of how much income could otherwise service.
+  const scn2Price = cashProvided ? cashMaxPrice : null;
+  const scn2Loan = cashProvided ? cashMaxPrice * ltv : null;
+  const scn2Monthly = cashProvided && scn2Loan > 0
+    ? scn2Loan * r / (1 - Math.pow(1 + r, -n))
+    : 0;
+
+  /* --- Render Scenario 1 (Income/MSR) card --- */
+  const propNoun = propertyType === 'hdb' ? 'HDB' : 'EC';
+  document.getElementById('scn1Title').textContent = usesHdbLoan
+    ? 'Scenario 1 — Based on Income (MSR)'
+    : 'Scenario 1 — Based on Income (MSR & TDSR)';
+  document.getElementById('scn1LoanEl').textContent = fmt(scn1Loan);
+  document.getElementById('scn1PriceLabel').textContent = `Max ${propNoun} Purchase Price`;
+  document.getElementById('scn1PriceEl').textContent = fmt(scn1Price);
+  document.getElementById('scn1DownpaymentLabel').textContent = `Downpayment Required (${(downpaymentPct*100).toFixed(0)}%)`;
+  document.getElementById('scn1DownpaymentEl').textContent = fmt(scn1Downpayment);
+  document.getElementById('scn1FundsEl').textContent = fmt(scn1FundsAvailable) + (cashProvided ? '' : ' (CPF only — cash on hand not entered)');
+  const scn1GapLabelEl = document.getElementById('scn1GapLabelEl');
+  const scn1GapEl = document.getElementById('scn1GapEl');
+  if (scn1Gap > 0) {
+    scn1GapLabelEl.textContent = 'Shortfall';
+    scn1GapEl.textContent = fmt(scn1Gap);
+  } else {
+    scn1GapLabelEl.textContent = 'Surplus';
+    scn1GapEl.textContent = fmt(Math.abs(scn1Gap));
+  }
+
+  /* --- Render Scenario 2 (Cash/CPF) card --- */
+  const scn2Content = document.getElementById('scn2Content');
+  const scn2Placeholder = document.getElementById('scn2Placeholder');
+  if (cashProvided) {
+    scn2Content.style.display = 'block';
+    scn2Placeholder.style.display = 'none';
+    document.getElementById('scn2PriceLabel').textContent = `Max ${propNoun} Purchase Price`;
+    document.getElementById('scn2PriceEl').textContent = fmt(scn2Price);
+    document.getElementById('scn2LoanEl').textContent = fmt(scn2Loan);
+    document.getElementById('scn2MonthlyEl').textContent = fmt(scn2Monthly);
+  } else {
+    scn2Content.style.display = 'none';
+    scn2Placeholder.style.display = 'block';
+  }
+
+  /* --- Recommendation banner label --- */
+  document.getElementById('recommendationLabel').textContent = cashBinding
+    ? 'Recommended affordability — Scenario 2 is lower (your Cash/CPF is the binding constraint)'
+    : (cashProvided
+        ? 'Recommended affordability — Scenario 1 is lower (your Income/MSR is the binding constraint)'
+        : 'Recommended affordability — based on Scenario 1 (enter Cash on hand to compare against Scenario 2)');
 
   /* --- Render main results ---
      Headline is the max LOAN amount (what a bank/HDB would actually approve);
@@ -705,7 +794,10 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
     hasCB, cbIncome: hasCB ? cbIncome : null, cbAge: hasCB ? cbAge : null, cbVariable: hasCB ? (cbVariable || null) : null,
     bOA: bOA || null, cbOA: hasCB ? (cbOA || null) : null,
     carLoan: num('car-loan') || null, otherDebt: num('other-debt') || null,
-    loanRatePct: (loanRate*100).toFixed(2), ltvPct: (ltv*100).toFixed(0)
+    loanRatePct: (loanRate*100).toFixed(2), ltvPct: (ltv*100).toFixed(0),
+    // Two-scenario breakdown (Income/MSR vs Cash/CPF) for the PDF
+    scn1Loan, scn1Price, scn1Downpayment, scn1FundsAvailable, scn1Gap,
+    scn2Price, scn2Loan, scn2Monthly, cashChecked: cashProvided
   };
 
   document.getElementById('resultsPanel').classList.add('show');
@@ -730,9 +822,25 @@ function generatePdf(lead){
     doc.setFontSize(12);
     let y = 40;
     const line = (label, val) => { doc.text(`${label}: ${val}`, 14, y); y += 8; };
+    const section = (title) => { doc.setFont(undefined, 'bold'); doc.text(title, 14, y); doc.setFont(undefined, 'normal'); y += 8; };
     const ptypeLabel = lastResults.propertyType === 'hdb' ? 'Resale HDB Flat' : 'Exec Condo';
     line('Property type', ptypeLabel);
     line('Loan type', lastResults.loanType);
+    section('Scenario 1: Based on Income');
+    line('Max loan amount', fmt(lastResults.scn1Loan));
+    line('Max purchase price', fmt(lastResults.scn1Price));
+    line('Downpayment required', fmt(lastResults.scn1Downpayment));
+    line('Your cash + CPF available', fmt(lastResults.scn1FundsAvailable));
+    line(lastResults.scn1Gap > 0 ? 'Shortfall' : 'Surplus', fmt(Math.abs(lastResults.scn1Gap)));
+    y += 2;
+    if (lastResults.cashChecked){
+      section('Scenario 2: Based on Cash/CPF');
+      line('Max purchase price', fmt(lastResults.scn2Price));
+      line('Resulting loan amount', fmt(lastResults.scn2Loan));
+      line('Resulting monthly instalment', fmt(lastResults.scn2Monthly));
+      y += 2;
+    }
+    section('Recommended (whichever scenario is lower)');
     line('Estimated maximum loan amount', fmt(lastResults.maxLoanAmount));
     line('Estimated loan range', `${fmt(lastResults.maxLoanAmountLow)} - ${fmt(lastResults.maxLoanAmount)}`);
     line('Estimated maximum property price', fmt(lastResults.maxPrice));
