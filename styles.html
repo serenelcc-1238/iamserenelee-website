@@ -204,15 +204,13 @@ header{
 .about-grid{display:grid;grid-template-columns:300px 1fr;gap:46px;align-items:start;}
 @media(max-width:760px){.about-grid{grid-template-columns:1fr;}}
 .about-photo{border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line);width:100%;max-width:300px;}
-.about-copy .cea{font-size:.85rem;color:var(--muted);margin-bottom:16px;font-weight:600;}
-.about-copy p{line-height:1.75;font-size:1rem;max-width:620px;}
+.about-copy p{line-height:1.55;font-size:1rem;max-width:620px;}
 
-/* CARE mission grid */
-.care-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0 26px;max-width:620px;}
-@media(max-width:520px){.care-grid{grid-template-columns:1fr;}}
-.care-item{background:var(--cream-2);border-radius:10px;padding:16px 18px;border-left:3px solid var(--gold);}
-.care-item .care-label{font-weight:700;color:var(--navy-900);font-family:'Fraunces',serif;font-size:1rem;margin-bottom:4px;display:block;}
-.care-item p{margin:0;font-size:.88rem;color:var(--muted);line-height:1.5;max-width:none;}
+/* CARE mission list */
+ul.care-list{margin:14px 0 22px;padding-left:20px;max-width:620px;}
+ul.care-list li{margin-bottom:10px;line-height:1.6;font-size:.95rem;color:var(--muted);}
+ul.care-list li strong{color:var(--navy-900);}
+ul.care-list li::marker{color:var(--gold-dark);}
 
 /* CALCULATOR (verbatim from live tested build) */
 .calc-section{background:var(--cream);}
