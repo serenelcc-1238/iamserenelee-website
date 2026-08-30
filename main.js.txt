@@ -1,0 +1,27 @@
+/* Shared across every page: mobile nav toggle + footer year */
+document.addEventListener('DOMContentLoaded', function () {
+  var toggle = document.getElementById('navToggle');
+  var links = document.getElementById('navLinks');
+  if (toggle && links) {
+    toggle.addEventListener('click', function () {
+      links.classList.toggle('open');
+    });
+  }
+  var yearEl = document.getElementById('year');
+  if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+  /* Blog page only: auto-sort posts newest-first by each row's data-date
+     attribute (YYYY-MM-DD), so Serene can paste a new post anywhere in
+     blog.html and it lands in the right place automatically — no manual
+     reordering needed. No-op on every other page (no .blog-list there). */
+  var blogList = document.querySelector('.blog-list');
+  if (blogList) {
+    var rows = Array.prototype.slice.call(blogList.querySelectorAll('.blog-row'));
+    rows.sort(function (a, b) {
+      var dateA = a.getAttribute('data-date') || '';
+      var dateB = b.getAttribute('data-date') || '';
+      return dateB.localeCompare(dateA); // ISO dates sort correctly as strings
+    });
+    rows.forEach(function (row) { blogList.appendChild(row); });
+  }
+});
