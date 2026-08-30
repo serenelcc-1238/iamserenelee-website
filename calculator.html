@@ -193,6 +193,9 @@
               <div class="scenario-line"><span id="scn2PriceLabel">Max HDB Purchase Price</span><strong id="scn2PriceEl">S$0</strong></div>
               <div class="scenario-line"><span>Resulting Loan Amount</span><strong id="scn2LoanEl">S$0</strong></div>
               <div class="scenario-line"><span>Monthly Instalment</span><strong id="scn2MonthlyEl">S$0</strong></div>
+              <div class="scenario-line"><span id="scn2DownpaymentLabel">Downpayment Required (25%)</span><strong id="scn2DownpaymentEl">S$0</strong></div>
+              <div class="scenario-line"><span>Your Cash + CPF Available</span><strong id="scn2FundsEl">S$0</strong></div>
+              <div class="scenario-line scenario-line-highlight"><span id="scn2GapLabelEl">Shortfall</span><strong id="scn2GapEl">S$0</strong></div>
             </div>
             <div class="scenario-note" id="scn2Placeholder" style="display:none;">Enter Cash on hand above to see this scenario.</div>
           </div>
@@ -203,34 +206,6 @@
           <div class="sub" id="resHeroPriceLabel">Estimated maximum HDB purchase price</div>
           <div class="figure" id="resHeroPrice">S$0</div>
           <div class="sub" id="resHeroPriceRange">Range: S$0 &ndash; S$0</div>
-        </div>
-
-        <div class="result-grid">
-          <div class="result-tile result-tile-wide">
-            <div class="label" id="resLoanLabel">Estimated Maximum Loan Amount</div>
-            <div class="value" id="resLoanAmount">S$0</div>
-            <div class="note" id="resLoanNote">This is the loan portion of the purchase price above; the rest is funded by CPF/cash — see the downpayment breakdown below.</div>
-          </div>
-          <div class="result-tile">
-            <div class="label">Est. Monthly Mortgage</div>
-            <div class="value" id="resMonthly">S$0</div>
-            <div class="note" id="resMonthlyNote">At the max loan qualified under the MAS stress-test rate. Your actual instalment may be lower once a bank quotes an actual rate.</div>
-          </div>
-          <div class="result-tile">
-            <div class="label">Est. Cash Needed Upfront</div>
-            <div class="value" id="resCash">S$0</div>
-            <div class="note">Minimum cash component of the downpayment, after applying your CPF OA to the rest.</div>
-          </div>
-          <div class="result-tile">
-            <div class="label">Total Downpayment (<span id="downpaymentPctLabel">25</span>%)</div>
-            <div class="value" id="resDownpayment">S$0</div>
-            <div class="note" id="resDownpaymentNote">Min. 5% cash, remaining via CPF OA or cash (HDB loans: no minimum cash).</div>
-          </div>
-          <div class="result-tile">
-            <div class="label">CPF OA Applied</div>
-            <div class="value" id="resCpfApplied">S$0</div>
-            <div class="note">Subject to CPF Board withdrawal rules at the time of purchase.</div>
-          </div>
         </div>
 
         <div id="fitBox" class="fit-box" style="display:none;"></div>
@@ -612,12 +587,24 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
   const scn1Gap = scn1CashNeeded - (cashProvided ? cashOnHand : 0);
 
   // Scenario 2: what the buyer's actual cash + CPF can fund as a downpayment,
-  // regardless of how much income could otherwise service.
+  // regardless of how much income could otherwise service. The downpayment/
+  // funds/gap lines mirror Scenario 1's — for an HDB loan (minCashPct 0) the
+  // gap comes out to S$0 by construction, since this price IS defined as the
+  // point where cash+CPF exactly cover the downpayment. For a Bank Loan,
+  // where a minimum cash slice applies on top of CPF, it can show a genuine
+  // surplus (unused CPF the 5%-cash-floor rule won't let you apply here).
   const scn2Price = cashProvided ? cashMaxPrice : null;
   const scn2Loan = cashProvided ? cashMaxPrice * ltv : null;
   const scn2Monthly = cashProvided && scn2Loan > 0
     ? scn2Loan * r / (1 - Math.pow(1 + r, -n))
     : 0;
+  const scn2Downpayment = cashProvided ? scn2Price * downpaymentPct : null;
+  const scn2MinCash = cashProvided ? scn2Price * minCashPct : null;
+  const scn2CpfOrCash = cashProvided ? scn2Price * (downpaymentPct - minCashPct) : null;
+  const scn2CpfApplied = cashProvided ? Math.min(totalOA, scn2CpfOrCash) : null;
+  const scn2CashNeeded = cashProvided ? scn2MinCash + (scn2CpfOrCash - scn2CpfApplied) : null;
+  const scn2FundsAvailable = cashProvided ? cashOnHand + totalOA : null;
+  const scn2Gap = cashProvided ? scn2CashNeeded - cashOnHand : null;
 
   /* --- Render Scenario 1 (Income/MSR) card --- */
   const propNoun = propertyType === 'hdb' ? 'HDB' : 'EC';
@@ -651,6 +638,18 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
     document.getElementById('scn2PriceEl').textContent = fmt(scn2Price);
     document.getElementById('scn2LoanEl').textContent = fmt(scn2Loan);
     document.getElementById('scn2MonthlyEl').textContent = fmt(scn2Monthly);
+    document.getElementById('scn2DownpaymentLabel').textContent = `Downpayment Required (${(downpaymentPct*100).toFixed(0)}%)`;
+    document.getElementById('scn2DownpaymentEl').textContent = fmt(scn2Downpayment);
+    document.getElementById('scn2FundsEl').textContent = fmt(scn2FundsAvailable);
+    const scn2GapLabelEl = document.getElementById('scn2GapLabelEl');
+    const scn2GapEl = document.getElementById('scn2GapEl');
+    if (scn2Gap > 0.5) {
+      scn2GapLabelEl.textContent = 'Shortfall';
+      scn2GapEl.textContent = fmt(scn2Gap);
+    } else {
+      scn2GapLabelEl.textContent = 'Surplus';
+      scn2GapEl.textContent = fmt(Math.abs(scn2Gap));
+    }
   } else {
     scn2Content.style.display = 'none';
     scn2Placeholder.style.display = 'block';
@@ -670,35 +669,10 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
   document.getElementById('resHeroPrice').textContent = fmt(maxPrice);
   document.getElementById('resHeroPriceRange').textContent =
     `Range: ${fmt(maxPrice*0.9)} – ${fmt(maxPrice)}`;
-  document.getElementById('resLoanLabel').textContent =
-    propertyType === 'hdb' ? 'Estimated Maximum Loan Amount' : 'Estimated Maximum EC Loan Amount';
-  document.getElementById('resLoanAmount').textContent = fmt(loanQuantumAtMaxPrice);
-  document.getElementById('resLoanNote').textContent =
-    `This is the loan portion of the ${fmt(maxPrice)} purchase price above; the remaining ${(downpaymentPct*100).toFixed(0)}% is funded by CPF/cash — see the downpayment breakdown below.`;
-  document.getElementById('resMonthly').textContent = fmt(monthlyAtMaxPrice);
-  if (cashBinding) {
-    document.getElementById('resMonthlyNote').textContent =
-      `Limited by your cash on hand, not your income — based on income alone you could service up to ${fmt(availableForMortgage)}/month, but your cash + CPF only stretch to a ${fmt(maxPrice)} purchase.`;
-  } else {
-    document.getElementById('resMonthlyNote').textContent = usesHdbLoan
-      ? `At the HDB concessionary rate of ${loanRate*100} % p.a. (fixed — no stress-test needed since this rate doesn't float), capped by ${cappedByLabel} of your assessable income.`
-      : `At the max loan qualified under a ${loanRate*100}% p.a. rate, capped by ${cappedByLabel} of your assessable income. Your actual instalment may be lower once a bank quotes an actual rate.`;
-  }
-  document.getElementById('resCash').textContent = fmt(totalCashNeeded);
-  document.getElementById('resDownpayment').textContent = fmt(downpaymentTotal);
-  document.getElementById('downpaymentPctLabel').textContent = (downpaymentPct*100).toFixed(0);
-  const cashHint = usesHdbLoan
-    ? `HDB loans have no minimum cash requirement — the full ${(downpaymentPct*100).toFixed(0)}% can be paid via CPF OA (and/or cash) if you have enough.`
-    : `Min. ${(minCashPct*100).toFixed(0)}% cash, remaining ${((downpaymentPct-minCashPct)*100).toFixed(0)}% via CPF OA or cash.`;
-  if (cashProvided) {
-    const spare = cashOnHand - totalCashNeeded;
-    document.getElementById('resDownpaymentNote').textContent = cashBinding
-      ? `${cashHint} This uses all of your stated ${fmt(cashOnHand)} cash on hand.`
-      : `${cashHint} About ${fmt(Math.max(0, spare))} of your stated ${fmt(cashOnHand)} cash on hand is left over.`;
-  } else {
-    document.getElementById('resDownpaymentNote').textContent = cashHint;
-  }
-  document.getElementById('resCpfApplied').textContent = fmt(cpfApplied);
+  // Note: the old standalone tiles for Loan Amount / Monthly Mortgage / Cash
+  // Needed / Downpayment / CPF Applied were removed as redundant — all of
+  // that is now covered by the Scenario 1 / Scenario 2 cards above, for
+  // whichever scenario the recommendation banner names.
 
   document.getElementById('assumptionsNote').textContent = (usesHdbLoan
     ? `Based on a ${tenureYears}-year loan tenure, ${(ltv*100).toFixed(0)}% loan-to-value, and the HDB concessionary loan rate of ${loanRate*100}% p.a., capped by MSR at 30% of your assessable income.`
@@ -794,8 +768,9 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
     carLoan: num('car-loan') || null, otherDebt: num('other-debt') || null,
     loanRatePct: (loanRate*100).toFixed(2), ltvPct: (ltv*100).toFixed(0),
     // Two-scenario breakdown (Income/MSR vs Cash/CPF) for the PDF
-    scn1Loan, scn1Price, scn1Downpayment, scn1FundsAvailable, scn1Gap,
-    scn2Price, scn2Loan, scn2Monthly, cashChecked: cashProvided
+    scn1Loan, scn1Price, scn1Monthly, scn1Downpayment, scn1FundsAvailable, scn1Gap,
+    scn2Price, scn2Loan, scn2Monthly, scn2Downpayment, scn2FundsAvailable, scn2Gap,
+    cashChecked: cashProvided
   };
 
   document.getElementById('resultsPanel').classList.add('show');
@@ -825,8 +800,9 @@ function generatePdf(lead){
     line('Property type', ptypeLabel);
     line('Loan type', lastResults.loanType);
     section('Scenario 1: Based on Income');
-    line('Max loan amount', fmt(lastResults.scn1Loan));
     line('Max purchase price', fmt(lastResults.scn1Price));
+    line('Max loan amount', fmt(lastResults.scn1Loan));
+    line('Monthly instalment', fmt(lastResults.scn1Monthly));
     line('Downpayment required', fmt(lastResults.scn1Downpayment));
     line('Your cash + CPF available', fmt(lastResults.scn1FundsAvailable));
     line(lastResults.scn1Gap > 0 ? 'Shortfall' : 'Surplus', fmt(Math.abs(lastResults.scn1Gap)));
@@ -835,7 +811,10 @@ function generatePdf(lead){
       section('Scenario 2: Based on Cash/CPF');
       line('Max purchase price', fmt(lastResults.scn2Price));
       line('Resulting loan amount', fmt(lastResults.scn2Loan));
-      line('Resulting monthly instalment', fmt(lastResults.scn2Monthly));
+      line('Monthly instalment', fmt(lastResults.scn2Monthly));
+      line('Downpayment required', fmt(lastResults.scn2Downpayment));
+      line('Your cash + CPF available', fmt(lastResults.scn2FundsAvailable));
+      line(lastResults.scn2Gap > 0.5 ? 'Shortfall' : 'Surplus', fmt(Math.abs(lastResults.scn2Gap)));
       y += 2;
     }
     section('Recommended (whichever scenario is lower)');
