@@ -713,10 +713,12 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
   const scn1GapEl = document.getElementById('scn1GapEl');
   if (scn1Gap > 0) {
     scn1GapLabelEl.textContent = 'Shortfall';
-    scn1GapEl.textContent = fmt(scn1Gap);
+    scn1GapEl.textContent = '-' + fmt(scn1Gap);
+    scn1GapEl.classList.add('gap-shortfall');
   } else {
     scn1GapLabelEl.textContent = 'Surplus';
     scn1GapEl.textContent = fmt(Math.abs(scn1Gap));
+    scn1GapEl.classList.remove('gap-shortfall');
   }
 
   /* --- Render Scenario 2 (Cash/CPF) card --- */
@@ -740,10 +742,12 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
     const scn2GapEl = document.getElementById('scn2GapEl');
     if (scn2Gap > 0.5) {
       scn2GapLabelEl.textContent = 'Shortfall';
-      scn2GapEl.textContent = fmt(scn2Gap);
+      scn2GapEl.textContent = '-' + fmt(scn2Gap);
+      scn2GapEl.classList.add('gap-shortfall');
     } else {
       scn2GapLabelEl.textContent = 'Surplus';
       scn2GapEl.textContent = fmt(Math.abs(scn2Gap));
+      scn2GapEl.classList.remove('gap-shortfall');
     }
   } else {
     scn2Content.style.display = 'none';
