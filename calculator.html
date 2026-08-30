@@ -146,6 +146,7 @@
             <input type="range" id="rate-slider" min="1" max="6" step="0.1" value="4">
             <span class="slider-num-wrap"><input type="number" id="rate-value" min="1" max="6" step="0.1" value="4" class="slider-number"><span class="slider-unit">%</span></span>
           </div>
+          <div class="hint" id="rateLockHint" style="display:none;margin-top:-6px;">Fixed by HDB at 2.6% p.a. for a Concessionary Loan — this rate isn't adjustable. Switch to Bank Loan to model a different rate.</div>
           <div class="slider-row">
             <span class="slider-label">Loan-to-Value</span>
             <input type="range" id="ltv-slider" min="35" max="75" step="5" value="75">
@@ -176,12 +177,17 @@
       <div id="resultsPanel">
         <div class="divider"></div>
         <div class="result-hero">
-          <div class="sub" id="resMaxPriceLabel">Estimated maximum resale HDB flat price</div>
-          <div class="figure" id="resMaxPrice">S$0</div>
-          <div class="sub" id="resMaxPriceRange">Range: S$0 &ndash; S$0</div>
+          <div class="sub" id="resMaxLoanLabel">Estimated maximum HDB loan amount</div>
+          <div class="figure" id="resMaxLoan">S$0</div>
+          <div class="sub" id="resMaxLoanRange">Range: S$0 &ndash; S$0</div>
         </div>
 
         <div class="result-grid">
+          <div class="result-tile result-tile-wide">
+            <div class="label" id="resPriceLabel">Estimated Maximum Purchase Price</div>
+            <div class="value" id="resMaxPrice">S$0</div>
+            <div class="note" id="resPriceNote">This is the loan above plus your downpayment (CPF/cash) — see the breakdown below.</div>
+          </div>
           <div class="result-tile">
             <div class="label">Est. Monthly Mortgage</div>
             <div class="value" id="resMonthly">S$0</div>
@@ -421,12 +427,33 @@ function refreshRateDefault(){
   setSliderDefault(rateSlider, rateValueBox, 'rate', rate);
 }
 
+/* ---------- Lock Interest Rate at 2.6% for HDB Concessionary Loan ----------
+   The HDB loan rate is fixed by HDB (CPF OA rate + 0.1%), not something a
+   buyer can shop around on like a bank rate — so unlike Tenure and LTV, this
+   one isn't user-adjustable once HDB Concessionary Loan is selected. This
+   also prevents the rate silently sitting at an old Bank Loan value (e.g. 4%)
+   if it was touched before switching loan types. */
+const rateLockHint = document.getElementById('rateLockHint');
+function updateRateLockUI(){
+  const { ptype, loantype } = currentPtypeLoantype();
+  const locked = (ptype === 'hdb' && loantype === 'hdbloan');
+  rateSlider.disabled = locked;
+  rateValueBox.disabled = locked;
+  rateLockHint.style.display = locked ? 'block' : 'none';
+  if (locked){
+    sliderTouched.rate = false; // force it back under auto-default control
+    rateSlider.value = 2.6;
+    rateValueBox.value = 2.6;
+  }
+}
+
 ['b-age','cb-age'].forEach(id => document.getElementById(id).addEventListener('input', refreshTenureDefault));
 hasCobuyer.addEventListener('change', refreshTenureDefault);
-document.querySelectorAll('input[name="ptype"]').forEach(r => r.addEventListener('change', () => { refreshTenureDefault(); refreshRateDefault(); }));
-document.querySelectorAll('input[name="loantype"]').forEach(r => r.addEventListener('change', () => { refreshTenureDefault(); refreshRateDefault(); }));
+document.querySelectorAll('input[name="ptype"]').forEach(r => r.addEventListener('change', () => { refreshTenureDefault(); refreshRateDefault(); updateRateLockUI(); }));
+document.querySelectorAll('input[name="loantype"]').forEach(r => r.addEventListener('change', () => { refreshTenureDefault(); refreshRateDefault(); updateRateLockUI(); }));
 refreshTenureDefault();
 refreshRateDefault();
+updateRateLockUI();
 
 let lastResults = null; // stashed for PDF / lead payload
 
@@ -544,12 +571,23 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
   const shortfall = cpfOrCashPortion - cpfApplied;
   const totalCashNeeded = minCash + shortfall;
 
-  /* --- Render main results --- */
-  document.getElementById('resMaxPriceLabel').textContent =
-    propertyType === 'hdb' ? 'Estimated maximum resale HDB flat price' : 'Estimated maximum EC price';
+  /* --- Render main results ---
+     Headline is the max LOAN amount (what a bank/HDB would actually approve);
+     the purchase price (loan + downpayment) is shown as a secondary figure,
+     since the loan itself is the number buyers usually compare against
+     quick-reference tables. Both use loanQuantumAtMaxPrice/maxPrice, which
+     already reflect whichever of income or cash-on-hand is the binding
+     constraint. */
+  document.getElementById('resMaxLoanLabel').textContent =
+    propertyType === 'hdb' ? 'Estimated maximum HDB loan amount' : 'Estimated maximum EC loan amount';
+  document.getElementById('resMaxLoan').textContent = fmt(loanQuantumAtMaxPrice);
+  document.getElementById('resMaxLoanRange').textContent =
+    `Range: ${fmt(loanQuantumAtMaxPrice*0.9)} – ${fmt(loanQuantumAtMaxPrice)}`;
+  document.getElementById('resPriceLabel').textContent =
+    propertyType === 'hdb' ? 'Estimated Maximum Resale HDB Flat Price' : 'Estimated Maximum EC Price';
   document.getElementById('resMaxPrice').textContent = fmt(maxPrice);
-  document.getElementById('resMaxPriceRange').textContent =
-    `Range: ${fmt(maxPrice*0.9)} – ${fmt(maxPrice)}`;
+  document.getElementById('resPriceNote').textContent =
+    `This is the loan above (${fmt(loanQuantumAtMaxPrice)}) plus your ${(downpaymentPct*100).toFixed(0)}% downpayment — see the breakdown below.`;
   document.getElementById('resMonthly').textContent = fmt(monthlyAtMaxPrice);
   if (cashBinding) {
     document.getElementById('resMonthlyNote').textContent =
@@ -655,6 +693,7 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
   }
 
   lastResults = {
+    maxLoanAmount: loanQuantumAtMaxPrice, maxLoanAmountLow: loanQuantumAtMaxPrice*0.9,
     maxPrice, maxPriceLow: maxPrice*0.9, monthlyMortgage: monthlyAtMaxPrice,
     totalCashNeeded, downpaymentTotal, downpaymentPct: (downpaymentPct*100).toFixed(0), cpfApplied, tenureYears, targetPrice,
     hdbPrice: hdbSkip ? null : hdbPrice,
@@ -694,6 +733,8 @@ function generatePdf(lead){
     const ptypeLabel = lastResults.propertyType === 'hdb' ? 'Resale HDB Flat' : 'Exec Condo';
     line('Property type', ptypeLabel);
     line('Loan type', lastResults.loanType);
+    line('Estimated maximum loan amount', fmt(lastResults.maxLoanAmount));
+    line('Estimated loan range', `${fmt(lastResults.maxLoanAmountLow)} - ${fmt(lastResults.maxLoanAmount)}`);
     line('Estimated maximum property price', fmt(lastResults.maxPrice));
     line('Estimated price range', `${fmt(lastResults.maxPriceLow)} - ${fmt(lastResults.maxPrice)}`);
     line('Estimated monthly mortgage', fmt(lastResults.monthlyMortgage));
