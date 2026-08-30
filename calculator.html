@@ -219,6 +219,23 @@
           </div>
         </div>
 
+        <div class="scenario-card scenario-card-wide" id="targetScenarioCard" style="display:none;">
+          <div class="scenario-card-title">Your Target — Based on Stated Price</div>
+          <div class="scenario-line"><span>Target Purchase Price</span><strong id="targetPriceDisplayEl">S$0</strong></div>
+          <div class="scenario-line"><span>Loan Amount</span><strong id="targetLoanEl">S$0</strong></div>
+          <div class="scenario-line"><span>Monthly Instalment</span><strong id="targetMonthlyEl">S$0</strong></div>
+          <div class="scenario-line"><span id="targetDownpaymentLabel">Downpayment Required (25%)</span><strong id="targetDownpaymentEl">S$0</strong></div>
+          <details class="scenario-details">
+            <summary class="scenario-line scenario-summary"><span>Upfront Costs (BSD + Fees)</span><strong id="targetCostsEl">S$0</strong></summary>
+            <div class="scenario-line"><span>Buyer Stamp Duty (BSD)</span><strong id="targetBSDEl">S$0</strong></div>
+            <div class="scenario-line"><span>Legal &amp; Resale Fees</span><strong id="targetFeesEl">S$0</strong></div>
+            <div class="scenario-line"><span>Total Cash/CPF Needed</span><strong id="targetTotalNeededEl">S$0</strong></div>
+          </details>
+          <div class="scenario-line"><span>Your Cash + CPF Available</span><strong id="targetFundsEl">S$0</strong></div>
+          <div class="scenario-line scenario-line-highlight"><span id="targetGapLabelEl">Shortfall</span><strong id="targetGapEl">S$0</strong></div>
+          <div class="scenario-note" id="targetIncomeNote" style="display:none;"></div>
+        </div>
+
         <div class="result-hero">
           <div class="sub" id="recommendationLabel">Recommended: Scenario 1</div>
           <div class="sub" id="resHeroPriceLabel">Estimated maximum HDB purchase price</div>
@@ -226,7 +243,6 @@
           <div class="sub" id="resHeroPriceRange">Range: S$0 &ndash; S$0</div>
         </div>
 
-        <div id="fitBox" class="fit-box" style="display:none;"></div>
         <div id="loanEligibilityNote" class="hdb-note" style="display:none;"></div>
         <div id="hdbNote" class="hdb-note" style="display:none;"></div>
         <div class="assumptions" id="assumptionsNote"></div>
@@ -693,6 +709,30 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
   const scn2FundsAvailable = cashProvided ? cashOnHand + totalOA : null;
   const scn2Gap = cashProvided ? scn2CashNeeded - cashOnHand : null;
 
+  /* --- Target Price scenario (only if the buyer stated one) ---
+     Same downpayment/BSD/fees math as Scenario 1 & 2, but at a FIXED price
+     the buyer chose rather than one solved for. Computed here (before the
+     recommendation banner) because the recommendation now checks whether
+     the target price comes out to a cash/CPF surplus. */
+  let targetLoan = null, targetMonthly = null, targetBSD = null, targetDownpayment = null,
+      targetFundsAvailable = null, targetGap = null, targetIncomeFits = null;
+  if (targetPrice) {
+    targetLoan = targetPrice * ltv;
+    targetMonthly = targetLoan > 0 ? targetLoan * r / (1 - Math.pow(1 + r, -n)) : 0;
+    targetBSD = bsdAmount(targetPrice);
+    targetDownpayment = targetPrice * downpaymentPct;
+    const targetMinCash = targetPrice * minCashPct;
+    const targetCpfOrCash = (targetPrice * (downpaymentPct - minCashPct)) + targetBSD + fixedCashCpfFees;
+    const targetCpfApplied = Math.min(totalOA, targetCpfOrCash);
+    targetFundsAvailable = (cashProvided ? cashOnHand : 0) + totalOA;
+    targetGap = (targetMinCash + (targetCpfOrCash - targetCpfApplied)) - (cashProvided ? cashOnHand : 0);
+    targetIncomeFits = targetMonthly <= availableForMortgage + 1;
+  }
+  // Surplus (or breakeven) on cash/CPF at the target price is what makes it the
+  // recommendation — per Serene: propose the target price itself if it's a
+  // surplus, otherwise fall back to whichever of Scenario 1/2 is lower.
+  const targetIsSurplus = targetPrice !== null && targetGap !== null && targetGap <= 0.5;
+
   /* --- Render Scenario 1 (Income/MSR) card --- */
   const propNoun = propertyType === 'hdb' ? 'HDB' : 'EC';
   document.getElementById('scn1Title').textContent = usesHdbLoan
@@ -754,30 +794,73 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
     scn2Placeholder.style.display = 'block';
   }
 
-  /* --- Recommendation banner: names which scenario wins, and leads with
-     Max Purchase Price (the loan amount for that same scenario is shown as
-     a secondary tile below, so nothing is lost — just re-ordered). --- */
+  /* --- Render Target Price card (only if the buyer stated a target) --- */
+  const targetCard = document.getElementById('targetScenarioCard');
+  if (targetPrice) {
+    targetCard.style.display = 'block';
+    document.getElementById('targetPriceDisplayEl').textContent = fmt(targetPrice);
+    document.getElementById('targetLoanEl').textContent = fmt(targetLoan);
+    document.getElementById('targetMonthlyEl').textContent = fmt(targetMonthly);
+    document.getElementById('targetDownpaymentLabel').textContent = `Downpayment Required (${(downpaymentPct*100).toFixed(0)}%)`;
+    document.getElementById('targetDownpaymentEl').textContent = fmt(targetDownpayment);
+    document.getElementById('targetCostsEl').textContent = fmt(targetBSD + fixedCashCpfFees);
+    document.getElementById('targetBSDEl').textContent = fmt(targetBSD);
+    document.getElementById('targetFeesEl').textContent = fmt(fixedCashCpfFees);
+    document.getElementById('targetTotalNeededEl').textContent = fmt(targetDownpayment + targetBSD + fixedCashCpfFees);
+    document.getElementById('targetFundsEl').textContent = fmt(targetFundsAvailable) + (cashProvided ? '' : ' (CPF only — cash on hand not entered)');
+    const targetGapLabelEl = document.getElementById('targetGapLabelEl');
+    const targetGapEl = document.getElementById('targetGapEl');
+    if (targetGap > 0.5) {
+      targetGapLabelEl.textContent = 'Shortfall';
+      targetGapEl.textContent = '-' + fmt(targetGap);
+      targetGapEl.classList.add('gap-shortfall');
+    } else {
+      targetGapLabelEl.textContent = 'Surplus';
+      targetGapEl.textContent = fmt(Math.abs(targetGap));
+      targetGapEl.classList.remove('gap-shortfall');
+    }
+    const targetIncomeNote = document.getElementById('targetIncomeNote');
+    if (!targetIncomeFits) {
+      targetIncomeNote.style.display = 'block';
+      targetIncomeNote.textContent = `Note: your income supports an estimated monthly instalment of up to ${fmt(availableForMortgage)} — this target's ${fmt(targetMonthly)}/month may exceed what ${usesHdbLoan ? 'MSR' : 'MSR/TDSR'} allows.`;
+    } else {
+      targetIncomeNote.style.display = 'none';
+    }
+  } else {
+    targetCard.style.display = 'none';
+  }
+
+  /* --- Recommendation banner ---
+     Per Serene: if the buyer has a stated target price and it comes out to a
+     cash/CPF surplus (or breakeven), recommend that target price directly.
+     Otherwise, fall back to whichever of Scenario 1 / Scenario 2 is lower —
+     same logic as before the Target Price scenario existed. */
   const recommendedScenario = cashBinding ? 'Scenario 2' : 'Scenario 1';
-  document.getElementById('recommendationLabel').textContent = cashBinding
-    ? `Recommended: ${recommendedScenario} (Cash/CPF is your binding constraint)`
-    : (cashProvided
-        ? `Recommended: ${recommendedScenario} (Income/MSR is your binding constraint)`
-        : `Recommended: ${recommendedScenario} (enter Cash on hand to compare against Scenario 2)`);
-  document.getElementById('resHeroPriceLabel').textContent =
-    propertyType === 'hdb' ? 'Estimated maximum HDB purchase price' : 'Estimated maximum EC purchase price';
-  document.getElementById('resHeroPrice').textContent = fmt(maxPrice);
-  document.getElementById('resHeroPriceRange').textContent =
-    `Range: ${fmt(maxPrice*0.9)} – ${fmt(maxPrice)}`;
+  const heroPrice = targetIsSurplus ? targetPrice : maxPrice;
+  document.getElementById('recommendationLabel').textContent = targetIsSurplus
+    ? `Recommended: Your Target Price of ${fmt(targetPrice)} (sufficient cash/CPF to cover it)`
+    : (cashBinding
+        ? `Recommended: ${recommendedScenario} (Cash/CPF is your binding constraint)`
+        : (cashProvided
+            ? `Recommended: ${recommendedScenario} (Income/MSR is your binding constraint)`
+            : `Recommended: ${recommendedScenario} (enter Cash on hand to compare against Scenario 2)`));
+  document.getElementById('resHeroPriceLabel').textContent = targetIsSurplus
+    ? (propertyType === 'hdb' ? 'Your target HDB purchase price' : 'Your target EC purchase price')
+    : (propertyType === 'hdb' ? 'Estimated maximum HDB purchase price' : 'Estimated maximum EC purchase price');
+  document.getElementById('resHeroPrice').textContent = fmt(heroPrice);
+  document.getElementById('resHeroPriceRange').textContent = targetIsSurplus
+    ? `Backed by ${fmt(targetFundsAvailable)} in cash/CPF, after Buyer Stamp Duty and fees`
+    : `Range: ${fmt(maxPrice*0.9)} – ${fmt(maxPrice)}`;
   // Note: the old standalone tiles for Loan Amount / Monthly Mortgage / Cash
   // Needed / Downpayment / CPF Applied were removed as redundant — all of
-  // that is now covered by the Scenario 1 / Scenario 2 cards above, for
-  // whichever scenario the recommendation banner names.
+  // that is now covered by the Scenario 1 / Scenario 2 / Target Price cards
+  // above, for whichever one the recommendation banner names.
 
   document.getElementById('assumptionsNote').textContent = (usesHdbLoan
     ? `Based on a ${tenureYears}-year loan tenure, ${(ltv*100).toFixed(0)}% loan-to-value, and the HDB concessionary loan rate of ${loanRate*100}% p.a., capped by MSR at 30% of your assessable income.`
     : `Based on a ${tenureYears}-year loan tenure, ${(ltv*100).toFixed(0)}% loan-to-value, and a ${loanRate*100}% p.a. interest rate — capped by the tighter of MSR (30%) and TDSR (55%) of your assessable income.`)
     + ` These financing variables can be adjusted above if you want to test a different scenario.`
-    + (cashBinding ? ` Your final estimate above is capped by your cash on hand rather than your income.` : '')
+    + (!targetIsSurplus && cashBinding ? ` Your final estimate above is capped by your cash on hand rather than your income.` : '')
     + ` Purchase price and loan figures above are net of Buyer Stamp Duty${propertyType === 'hdb' ? ', the HDB resale application fee,' : ' and'} and your stated legal/conveyancing fee, all assumed payable from cash/CPF OA. Additional Buyer's Stamp Duty (ABSD) and CPF withdrawal (Valuation) limits are not modeled — assumes a Singapore Citizen buying a first residential property.`;
 
   /* --- HDB loan eligibility note (income ceiling) --- */
@@ -794,54 +877,6 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
     }
   } else {
     loanEligibilityNote.style.display = 'none';
-  }
-
-  /* --- Target price comparison --- */
-  const fitBox = document.getElementById('fitBox');
-  if (targetPrice){
-    const targetLoan = targetPrice * ltv;
-    const instalmentAtTarget = targetLoan * r / (1 - Math.pow(1 + r, -n));
-    const incomeFits = instalmentAtTarget <= availableForMortgage + 1;
-
-    // Cash top-up breakdown at the target price — computed regardless of whether
-    // cash-on-hand was entered, since this answers "how much cash do I need to
-    // top up" directly, using whatever CPF OA was provided.
-    const targetBSD = bsdAmount(targetPrice);
-    const downpaymentAtTarget = targetPrice * downpaymentPct;
-    const minCashAtTarget = targetPrice * minCashPct;
-    const cpfOrCashAtTarget = (targetPrice * (downpaymentPct - minCashPct)) + targetBSD + fixedCashCpfFees;
-    const cpfAppliedAtTarget = Math.min(totalOA, cpfOrCashAtTarget);
-    const cashNeededAtTarget = minCashAtTarget + (cpfOrCashAtTarget - cpfAppliedAtTarget);
-
-    let cashFits = true;
-    if (cashProvided) cashFits = cashNeededAtTarget <= cashOnHand + 1;
-
-    const breakdown = `<div class="target-breakdown"><strong>At ${fmt(targetPrice)}:</strong> total downpayment is ${fmt(downpaymentAtTarget)} (${(downpaymentPct*100).toFixed(0)}%), plus an estimated ${fmt(targetBSD)} Buyer Stamp Duty and ${fmt(fixedCashCpfFees)} in legal/resale fees. ` +
-      `Your CPF OA covers ${fmt(cpfAppliedAtTarget)} of that combined total, leaving <strong>${fmt(cashNeededAtTarget)} in cash to top up</strong>.` +
-      (cashProvided
-        ? (cashFits
-            ? ` That's within your stated ${fmt(cashOnHand)} cash on hand, with ${fmt(Math.max(0, cashOnHand - cashNeededAtTarget))} to spare.`
-            : ` That's ${fmt(cashNeededAtTarget - cashOnHand)} more than your stated ${fmt(cashOnHand)} cash on hand.`)
-        : '') + `</div>`;
-
-    const fits = incomeFits && cashFits;
-    fitBox.style.display = 'block';
-    if (fits){
-      fitBox.className = 'fit-box fit-good';
-      fitBox.innerHTML = breakdown + `<div style="margin-top:10px;"><strong>Good news:</strong> your target of ${fmt(targetPrice)} looks within your estimated income affordability too, with an estimated monthly instalment of ${fmt(instalmentAtTarget)}.</div>`;
-    } else if (!incomeFits && !cashFits){
-      fitBox.className = 'fit-box fit-warn';
-      fitBox.innerHTML = breakdown + `<div style="margin-top:10px;"><strong>Worth a closer look:</strong> this target needs both a higher income to service the loan and more cash/CPF than you currently have on hand. This is exactly what Serene can help you plan around.</div>`;
-    } else if (!incomeFits){
-      const gap = incomeMaxPrice > 0 ? (targetPrice - incomeMaxPrice) : targetPrice;
-      fitBox.className = 'fit-box fit-warn';
-      fitBox.innerHTML = breakdown + `<div style="margin-top:10px;"><strong>Worth a closer look:</strong> your target of ${fmt(targetPrice)} is above what your income can service by roughly ${fmt(gap)}. A longer runway on existing debt, an adjusted target, or a co-buyer's income could help close the gap.</div>`;
-    } else {
-      fitBox.className = 'fit-box fit-warn';
-      fitBox.innerHTML = breakdown + `<div style="margin-top:10px;"><strong>Worth a closer look:</strong> your income can service this target, but the cash top-up above is more than you currently have on hand. Selling an existing property, a longer savings runway, or a lower target could help close this gap.</div>`;
-    }
-  } else {
-    fitBox.style.display = 'none';
   }
 
   /* --- HDB sale proceeds note --- */
@@ -874,6 +909,10 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
     // Two-scenario breakdown (Income/MSR vs Cash/CPF) for the PDF
     scn1Loan, scn1Price, scn1Monthly, scn1Downpayment, scn1BSD, scn1FundsAvailable, scn1Gap,
     scn2Price, scn2Loan, scn2Monthly, scn2Downpayment, scn2BSD, scn2FundsAvailable, scn2Gap,
+    // Target Price scenario (only populated if the buyer stated one) + which
+    // one ended up recommended, for the PDF's "Recommended" section
+    targetLoan, targetMonthly, targetBSD, targetDownpayment, targetFundsAvailable, targetGap,
+    targetIsSurplus, heroPrice,
     cashChecked: cashProvided
   };
 
@@ -927,19 +966,36 @@ function generatePdf(lead){
       line(lastResults.scn2Gap > 0.5 ? 'Shortfall' : 'Surplus', fmt(Math.abs(lastResults.scn2Gap)));
       y += 2;
     }
-    section('Recommended (whichever scenario is lower)');
-    line('Estimated maximum loan amount', fmt(lastResults.maxLoanAmount));
-    line('Estimated loan range', `${fmt(lastResults.maxLoanAmountLow)} - ${fmt(lastResults.maxLoanAmount)}`);
-    line('Estimated maximum property price', fmt(lastResults.maxPrice));
-    line('Estimated price range', `${fmt(lastResults.maxPriceLow)} - ${fmt(lastResults.maxPrice)}`);
-    line('Estimated monthly mortgage', fmt(lastResults.monthlyMortgage));
-    line('Capped by', lastResults.cappedBy);
-    line(`Estimated total downpayment (${lastResults.downpaymentPct}%)`, fmt(lastResults.downpaymentTotal));
-    line('CPF OA applied toward downpayment', fmt(lastResults.cpfApplied));
-    line('Estimated cash needed upfront', fmt(lastResults.totalCashNeeded));
+    if (lastResults.targetPrice){
+      section('Your Target Price');
+      line('Target purchase price', fmt(lastResults.targetPrice));
+      line('Loan amount', fmt(lastResults.targetLoan));
+      line('Monthly instalment', fmt(lastResults.targetMonthly));
+      line('Downpayment required', fmt(lastResults.targetDownpayment));
+      line('Buyer Stamp Duty (BSD)', fmt(lastResults.targetBSD));
+      line('Legal & resale fees', fmt(lastResults.fixedCashCpfFees));
+      line('Total cash/CPF needed', fmt(lastResults.targetDownpayment + lastResults.targetBSD + lastResults.fixedCashCpfFees));
+      line('Your cash + CPF available', fmt(lastResults.targetFundsAvailable));
+      line(lastResults.targetGap > 0.5 ? 'Shortfall' : 'Surplus', fmt(Math.abs(lastResults.targetGap)));
+      y += 2;
+    }
+    section(lastResults.targetIsSurplus ? 'Recommended: Your Target Price' : 'Recommended (whichever scenario is lower)');
+    if (lastResults.targetIsSurplus){
+      line('Recommended purchase price', fmt(lastResults.heroPrice));
+      line('Reason', 'Sufficient cash/CPF to cover this target after BSD & fees');
+    } else {
+      line('Estimated maximum loan amount', fmt(lastResults.maxLoanAmount));
+      line('Estimated loan range', `${fmt(lastResults.maxLoanAmountLow)} - ${fmt(lastResults.maxLoanAmount)}`);
+      line('Estimated maximum property price', fmt(lastResults.maxPrice));
+      line('Estimated price range', `${fmt(lastResults.maxPriceLow)} - ${fmt(lastResults.maxPrice)}`);
+      line('Estimated monthly mortgage', fmt(lastResults.monthlyMortgage));
+      line('Capped by', lastResults.cappedBy);
+      line(`Estimated total downpayment (${lastResults.downpaymentPct}%)`, fmt(lastResults.downpaymentTotal));
+      line('CPF OA applied toward downpayment', fmt(lastResults.cpfApplied));
+      line('Estimated cash needed upfront', fmt(lastResults.totalCashNeeded));
+    }
     if (lastResults.cashOnHand !== null) line('Cash on hand stated', fmt(lastResults.cashOnHand));
     line('Loan tenure used in this estimate', `${lastResults.tenureYears} years`);
-    if (lastResults.targetPrice) line('Your stated target price', fmt(lastResults.targetPrice));
     if (lastResults.hdbPrice) line('Your estimated current HDB sale price', fmt(lastResults.hdbPrice));
     y += 4;
     doc.setFontSize(9);

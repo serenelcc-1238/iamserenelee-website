@@ -273,6 +273,8 @@ ul.care-list li::marker{color:var(--gold-dark);}
 .scenario-line-highlight strong{color:var(--gold-dark);}
 .scenario-line-highlight strong.gap-shortfall{color:var(--danger);font-weight:800;}
 .scenario-note{font-size:.78rem;color:var(--muted);font-style:italic;}
+.scenario-card-wide{margin-bottom:18px;}
+.scenario-card-wide .scenario-note{margin-top:8px;}
 /* Upfront Costs (BSD + Fees) is collapsed into one summary row by default —
    tap/click to expand the BSD / legal & resale fee / total-needed breakdown,
    so the card doesn't grow 3 lines taller for every buyer who doesn't need
