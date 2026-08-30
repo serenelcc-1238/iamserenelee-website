@@ -221,7 +221,7 @@
         </div>
 
         <div class="scenario-card scenario-card-wide" id="targetScenarioCard" style="display:none;">
-          <div class="scenario-card-title">Your Target — Based on Stated Price</div>
+          <div class="scenario-card-title">Your Target Purchase Price</div>
           <div class="scenario-line"><span>Target Purchase Price</span><strong id="targetPriceDisplayEl">S$0</strong></div>
           <div class="scenario-line"><span>Loan Amount</span><strong id="targetLoanEl">S$0</strong></div>
           <div class="scenario-line"><span>Monthly Instalment</span><strong id="targetMonthlyEl">S$0</strong></div>
@@ -953,6 +953,37 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
 
   document.getElementById('resultsPanel').classList.add('show');
   document.getElementById('resultsPanel').scrollIntoView({behavior:'smooth', block:'start'});
+  equalizeScenarioTitles();
+});
+
+/* ---------- Keep Scenario 1 / Scenario 2 card titles the same height ----------
+   Scenario 1's title text ("...MSR & TDSR") is longer than Scenario 2's
+   ("...Cash/CPF") and can wrap to more lines than it, at any given viewport
+   width. If the two titles aren't forced to the same height, every row below
+   them (price, loan, monthly instalment, etc.) drifts out of alignment
+   between the two side-by-side cards. A fixed CSS min-height is fragile here
+   (the "right" height depends on font-size and column width, both of which
+   change across breakpoints), so instead we measure the two titles' natural
+   rendered heights after each render and set both to the taller of the two. */
+function equalizeScenarioTitles(){
+  const t1 = document.getElementById('scn1Title');
+  const t2 = document.getElementById('scn2Title');
+  if (!t1 || !t2) return;
+  t1.style.height = 'auto';
+  t2.style.height = 'auto';
+  // Force layout so the heights below reflect the reset above, not stale values.
+  void t1.offsetHeight;
+  const naturalH1 = t1.getBoundingClientRect().height;
+  const naturalH2 = t2.getBoundingClientRect().height;
+  const maxH = Math.max(naturalH1, naturalH2);
+  t1.style.height = maxH + 'px';
+  t2.style.height = maxH + 'px';
+}
+let equalizeTitlesResizeTimer = null;
+window.addEventListener('resize', function(){
+  if (!document.getElementById('resultsPanel').classList.contains('show')) return;
+  clearTimeout(equalizeTitlesResizeTimer);
+  equalizeTitlesResizeTimer = setTimeout(equalizeScenarioTitles, 150);
 });
 
 /* ---------- Unlock lead form ---------- */
