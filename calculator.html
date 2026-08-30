@@ -155,6 +155,12 @@
           <div class="hint">Defaults follow current MAS/HDB rules based on your age and loan type above. If this isn't your first property loan, your bank may cap LTV lower (e.g. 55% or 45%) with a higher minimum cash downpayment — adjust here to test that scenario, and confirm the exact figure with your bank.</div>
         </div>
 
+        <div class="field">
+          <label for="legal-fee">Estimated legal / conveyancing fee (SGD)</label>
+          <input type="number" id="legal-fee" min="0" step="100" value="1000">
+          <div class="hint" id="legalFeeHint">Defaults to ~S$1,000 for HDB's in-house legal service (Concessionary Loan) or ~S$2,500 for a private solicitor (Bank Loan requires one) — adjust here for your own quote.</div>
+        </div>
+
         <div class="field hdb-price-wrap">
           <label for="hdb-price">Estimated current HDB sale price (SGD)</label>
           <input type="number" id="hdb-price" min="0" step="1000" placeholder="e.g. 650000">
@@ -184,6 +190,12 @@
             <div class="scenario-line"><span>Max Loan Amount</span><strong id="scn1LoanEl">S$0</strong></div>
             <div class="scenario-line"><span>Monthly Instalment</span><strong id="scn1MonthlyEl">S$0</strong></div>
             <div class="scenario-line"><span id="scn1DownpaymentLabel">Downpayment Required (25%)</span><strong id="scn1DownpaymentEl">S$0</strong></div>
+            <details class="scenario-details">
+              <summary class="scenario-line scenario-summary"><span>Upfront Costs (BSD + Fees)</span><strong id="scn1CostsEl">S$0</strong></summary>
+              <div class="scenario-line"><span>Buyer Stamp Duty (BSD)</span><strong id="scn1BSDEl">S$0</strong></div>
+              <div class="scenario-line"><span>Legal &amp; Resale Fees</span><strong id="scn1FeesEl">S$0</strong></div>
+              <div class="scenario-line"><span>Total Cash/CPF Needed</span><strong id="scn1TotalNeededEl">S$0</strong></div>
+            </details>
             <div class="scenario-line"><span>Your Cash + CPF Available</span><strong id="scn1FundsEl">S$0</strong></div>
             <div class="scenario-line scenario-line-highlight"><span id="scn1GapLabelEl">Shortfall</span><strong id="scn1GapEl">S$0</strong></div>
           </div>
@@ -194,6 +206,12 @@
               <div class="scenario-line"><span>Resulting Loan Amount</span><strong id="scn2LoanEl">S$0</strong></div>
               <div class="scenario-line"><span>Monthly Instalment</span><strong id="scn2MonthlyEl">S$0</strong></div>
               <div class="scenario-line"><span id="scn2DownpaymentLabel">Downpayment Required (25%)</span><strong id="scn2DownpaymentEl">S$0</strong></div>
+              <details class="scenario-details">
+                <summary class="scenario-line scenario-summary"><span>Upfront Costs (BSD + Fees)</span><strong id="scn2CostsEl">S$0</strong></summary>
+                <div class="scenario-line"><span>Buyer Stamp Duty (BSD)</span><strong id="scn2BSDEl">S$0</strong></div>
+                <div class="scenario-line"><span>Legal &amp; Resale Fees</span><strong id="scn2FeesEl">S$0</strong></div>
+                <div class="scenario-line"><span>Total Cash/CPF Needed</span><strong id="scn2TotalNeededEl">S$0</strong></div>
+              </details>
               <div class="scenario-line"><span>Your Cash + CPF Available</span><strong id="scn2FundsEl">S$0</strong></div>
               <div class="scenario-line scenario-line-highlight"><span id="scn2GapLabelEl">Shortfall</span><strong id="scn2GapEl">S$0</strong></div>
             </div>
@@ -326,6 +344,44 @@ function fmt(n){
   return 'S$' + Math.round(n).toLocaleString('en-SG');
 }
 
+/* ---------- Buyer Stamp Duty (BSD) — current Singapore residential tiers ----------
+   1% on the first $180,000, 2% on the next $180,000, 3% on the next $640,000,
+   4% on the next $500,000, 5% on the next $1.5m, 6% on the remainder above $3m.
+   Taxed on the higher of price/valuation — this tool only has price, so it's used
+   as-is. Additional Buyer's Stamp Duty (ABSD) is NOT modeled (assumes a Singapore
+   Citizen buying their first residential property). */
+function bsdAmount(price){
+  if (!price || price <= 0) return 0;
+  const tiers = [180000, 360000, 1000000, 1500000, 3000000, Infinity];
+  const rates = [0.01, 0.02, 0.03, 0.04, 0.05, 0.06];
+  let bsd = 0, lastCap = 0;
+  for (let i = 0; i < tiers.length; i++){
+    if (price <= lastCap) break;
+    const slice = Math.min(price, tiers[i]) - lastCap;
+    bsd += slice * rates[i];
+    lastCap = tiers[i];
+  }
+  return Math.floor(bsd);
+}
+
+/* ---------- Solve max price from available cash+CPF once BSD + fixed fees are
+   deducted ----------
+   price*downpaymentPct + bsdAmount(price) + fixedFees = availableFunds
+   BSD depends on price, so this is solved by fixed-point iteration rather than
+   simple division. Converges fast since BSD's slope (max 6%) is much smaller
+   than downpaymentPct (typically 25%), so each pass shrinks the error a lot. */
+function solveMaxPriceFromFunds(availableFunds, downpaymentPct, fixedFees){
+  if (availableFunds <= fixedFees) return 0;
+  let price = Math.max(0, (availableFunds - fixedFees) / downpaymentPct);
+  for (let i = 0; i < 30; i++){
+    const needed = price * downpaymentPct + bsdAmount(price) + fixedFees;
+    const newPrice = Math.max(0, price + (availableFunds - needed) / downpaymentPct);
+    if (Math.abs(newPrice - price) < 1){ price = newPrice; break; }
+    price = newPrice;
+  }
+  return Math.max(0, price);
+}
+
 /* ---------- Property type / loan type toggle ---------- */
 const loanTypeBlock = document.getElementById('loanTypeBlock');
 function updatePtypeUI(){
@@ -445,13 +501,27 @@ function updateRateLockUI(){
   }
 }
 
+/* ---------- Legal / conveyancing fee — smart default by loan type ----------
+   HDB's in-house legal service (used with a Concessionary Loan) is typically
+   under $1,000; a Bank Loan requires a private solicitor, typically $1,500-3,000.
+   Same "touched" pattern as Tenure/Rate: once the buyer edits it, stop overwriting. */
+const legalFeeInput = document.getElementById('legal-fee');
+let legalFeeTouched = false;
+legalFeeInput.addEventListener('input', () => { legalFeeTouched = true; });
+function refreshLegalFeeDefault(){
+  if (legalFeeTouched) return;
+  const { ptype, loantype } = currentPtypeLoantype();
+  legalFeeInput.value = (ptype === 'hdb' && loantype === 'hdbloan') ? 1000 : 2500;
+}
+
 ['b-age','cb-age'].forEach(id => document.getElementById(id).addEventListener('input', refreshTenureDefault));
 hasCobuyer.addEventListener('change', refreshTenureDefault);
-document.querySelectorAll('input[name="ptype"]').forEach(r => r.addEventListener('change', () => { refreshTenureDefault(); refreshRateDefault(); updateRateLockUI(); }));
-document.querySelectorAll('input[name="loantype"]').forEach(r => r.addEventListener('change', () => { refreshTenureDefault(); refreshRateDefault(); updateRateLockUI(); }));
+document.querySelectorAll('input[name="ptype"]').forEach(r => r.addEventListener('change', () => { refreshTenureDefault(); refreshRateDefault(); updateRateLockUI(); refreshLegalFeeDefault(); }));
+document.querySelectorAll('input[name="loantype"]').forEach(r => r.addEventListener('change', () => { refreshTenureDefault(); refreshRateDefault(); updateRateLockUI(); refreshLegalFeeDefault(); }));
 refreshTenureDefault();
 refreshRateDefault();
 updateRateLockUI();
+refreshLegalFeeDefault();
 
 let lastResults = null; // stashed for PDF / lead payload
 
@@ -536,18 +606,32 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
   const totalOA = bOA + cbOA;
   const minCashPct = usesHdbLoan ? 0 : MIN_CASH_PCT;
 
+  /* --- Upfront transaction costs: Buyer Stamp Duty, HDB resale application fee,
+     legal/conveyancing fee ---
+     These are deducted from the buyer's cash/CPF pool alongside the downpayment,
+     which lowers the max price/loan the cash/CPF can support. CPF OA is assumed
+     usable toward BSD and legal fees as well as the downpayment (actual CPF
+     withdrawal limits aren't modeled here). BSD is price-dependent, so wherever
+     price itself is being solved FROM available funds (Scenario 2 / cash-binding
+     path), an iterative solver is used instead of simple division. */
+  const HDB_RESALE_FEE = 80; // HDB resale application fee (3-room+ flat, cash-payable); ECs don't have this fee
+  const legalFee = num('legal-fee');
+  const hdbResaleFeeAmt = propertyType === 'hdb' ? HDB_RESALE_FEE : 0;
+  const fixedCashCpfFees = legalFee + hdbResaleFeeAmt; // BSD added separately per-price below, since it varies with price
+
   /* --- Cash-on-hand constraint ---
      Even if income can service a bigger loan, the buyer still needs enough
-     cash + CPF OA to actually fund the downpayment. Two constraints apply:
+     cash + CPF OA to actually fund the downpayment plus BSD/fees. Two
+     constraints apply:
      1) at least minCashPct of the price must be CASH (can't use CPF for this slice)
-     2) cash + CPF together must cover the full downpaymentPct of the price
+     2) cash + CPF together must cover the full downpaymentPct of the price, plus BSD and fees
      Whichever constraint gives the lower price is the real cash-based ceiling. */
   let maxPrice = incomeMaxPrice;
   let cashBinding = false;
   let cashMaxPrice = null; // hoisted so Scenario 2 can be displayed even when it doesn't end up binding
   if (cashProvided) {
     const byCashFloor = minCashPct > 0 ? (cashOnHand / minCashPct) : Infinity;
-    const byTotalFunds = (cashOnHand + totalOA) / downpaymentPct;
+    const byTotalFunds = solveMaxPriceFromFunds(cashOnHand + totalOA, downpaymentPct, fixedCashCpfFees);
     cashMaxPrice = Math.max(0, Math.min(byCashFloor, byTotalFunds));
     if (cashMaxPrice < incomeMaxPrice) {
       maxPrice = cashMaxPrice;
@@ -563,9 +647,10 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
     ? loanQuantumAtMaxPrice * r / (1 - Math.pow(1 + r, -n))
     : 0;
 
+  const maxPriceBSD = bsdAmount(maxPrice);
   const downpaymentTotal = maxPrice * downpaymentPct;
   const minCash = maxPrice * minCashPct;
-  const cpfOrCashPortion = maxPrice * (downpaymentPct - minCashPct);
+  const cpfOrCashPortion = (maxPrice * (downpaymentPct - minCashPct)) + maxPriceBSD + fixedCashCpfFees;
   const cpfApplied = Math.min(totalOA, cpfOrCashPortion);
   const shortfall = cpfOrCashPortion - cpfApplied;
   const totalCashNeeded = minCash + shortfall;
@@ -578,9 +663,10 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
   const scn1Price = incomeMaxPrice;
   const scn1Loan = maxLoanQuantum;
   const scn1Monthly = scn1Loan > 0 ? scn1Loan * r / (1 - Math.pow(1 + r, -n)) : 0;
+  const scn1BSD = bsdAmount(scn1Price);
   const scn1Downpayment = incomeMaxPrice * downpaymentPct;
   const scn1MinCash = incomeMaxPrice * minCashPct;
-  const scn1CpfOrCash = incomeMaxPrice * (downpaymentPct - minCashPct);
+  const scn1CpfOrCash = (incomeMaxPrice * (downpaymentPct - minCashPct)) + scn1BSD + fixedCashCpfFees;
   const scn1CpfApplied = Math.min(totalOA, scn1CpfOrCash);
   const scn1CashNeeded = scn1MinCash + (scn1CpfOrCash - scn1CpfApplied);
   const scn1FundsAvailable = (cashProvided ? cashOnHand : 0) + totalOA;
@@ -598,9 +684,10 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
   const scn2Monthly = cashProvided && scn2Loan > 0
     ? scn2Loan * r / (1 - Math.pow(1 + r, -n))
     : 0;
+  const scn2BSD = cashProvided ? bsdAmount(scn2Price) : null;
   const scn2Downpayment = cashProvided ? scn2Price * downpaymentPct : null;
   const scn2MinCash = cashProvided ? scn2Price * minCashPct : null;
-  const scn2CpfOrCash = cashProvided ? scn2Price * (downpaymentPct - minCashPct) : null;
+  const scn2CpfOrCash = cashProvided ? (scn2Price * (downpaymentPct - minCashPct)) + scn2BSD + fixedCashCpfFees : null;
   const scn2CpfApplied = cashProvided ? Math.min(totalOA, scn2CpfOrCash) : null;
   const scn2CashNeeded = cashProvided ? scn2MinCash + (scn2CpfOrCash - scn2CpfApplied) : null;
   const scn2FundsAvailable = cashProvided ? cashOnHand + totalOA : null;
@@ -617,6 +704,10 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
   document.getElementById('scn1MonthlyEl').textContent = fmt(scn1Monthly);
   document.getElementById('scn1DownpaymentLabel').textContent = `Downpayment Required (${(downpaymentPct*100).toFixed(0)}%)`;
   document.getElementById('scn1DownpaymentEl').textContent = fmt(scn1Downpayment);
+  document.getElementById('scn1CostsEl').textContent = fmt(scn1BSD + fixedCashCpfFees);
+  document.getElementById('scn1BSDEl').textContent = fmt(scn1BSD);
+  document.getElementById('scn1FeesEl').textContent = fmt(fixedCashCpfFees);
+  document.getElementById('scn1TotalNeededEl').textContent = fmt(scn1Downpayment + scn1BSD + fixedCashCpfFees);
   document.getElementById('scn1FundsEl').textContent = fmt(scn1FundsAvailable) + (cashProvided ? '' : ' (CPF only — cash on hand not entered)');
   const scn1GapLabelEl = document.getElementById('scn1GapLabelEl');
   const scn1GapEl = document.getElementById('scn1GapEl');
@@ -640,6 +731,10 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
     document.getElementById('scn2MonthlyEl').textContent = fmt(scn2Monthly);
     document.getElementById('scn2DownpaymentLabel').textContent = `Downpayment Required (${(downpaymentPct*100).toFixed(0)}%)`;
     document.getElementById('scn2DownpaymentEl').textContent = fmt(scn2Downpayment);
+    document.getElementById('scn2CostsEl').textContent = fmt(scn2BSD + fixedCashCpfFees);
+    document.getElementById('scn2BSDEl').textContent = fmt(scn2BSD);
+    document.getElementById('scn2FeesEl').textContent = fmt(fixedCashCpfFees);
+    document.getElementById('scn2TotalNeededEl').textContent = fmt(scn2Downpayment + scn2BSD + fixedCashCpfFees);
     document.getElementById('scn2FundsEl').textContent = fmt(scn2FundsAvailable);
     const scn2GapLabelEl = document.getElementById('scn2GapLabelEl');
     const scn2GapEl = document.getElementById('scn2GapEl');
@@ -678,7 +773,8 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
     ? `Based on a ${tenureYears}-year loan tenure, ${(ltv*100).toFixed(0)}% loan-to-value, and the HDB concessionary loan rate of ${loanRate*100}% p.a., capped by MSR at 30% of your assessable income.`
     : `Based on a ${tenureYears}-year loan tenure, ${(ltv*100).toFixed(0)}% loan-to-value, and a ${loanRate*100}% p.a. interest rate — capped by the tighter of MSR (30%) and TDSR (55%) of your assessable income.`)
     + ` These financing variables can be adjusted above if you want to test a different scenario.`
-    + (cashBinding ? ` Your final estimate above is capped by your cash on hand rather than your income.` : '');
+    + (cashBinding ? ` Your final estimate above is capped by your cash on hand rather than your income.` : '')
+    + ` Purchase price and loan figures above are net of Buyer Stamp Duty${propertyType === 'hdb' ? ', the HDB resale application fee,' : ' and'} and your stated legal/conveyancing fee, all assumed payable from cash/CPF OA. Additional Buyer's Stamp Duty (ABSD) and CPF withdrawal (Valuation) limits are not modeled — assumes a Singapore Citizen buying a first residential property.`;
 
   /* --- HDB loan eligibility note (income ceiling) --- */
   const loanEligibilityNote = document.getElementById('loanEligibilityNote');
@@ -706,17 +802,18 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
     // Cash top-up breakdown at the target price — computed regardless of whether
     // cash-on-hand was entered, since this answers "how much cash do I need to
     // top up" directly, using whatever CPF OA was provided.
+    const targetBSD = bsdAmount(targetPrice);
     const downpaymentAtTarget = targetPrice * downpaymentPct;
     const minCashAtTarget = targetPrice * minCashPct;
-    const cpfOrCashAtTarget = targetPrice * (downpaymentPct - minCashPct);
+    const cpfOrCashAtTarget = (targetPrice * (downpaymentPct - minCashPct)) + targetBSD + fixedCashCpfFees;
     const cpfAppliedAtTarget = Math.min(totalOA, cpfOrCashAtTarget);
     const cashNeededAtTarget = minCashAtTarget + (cpfOrCashAtTarget - cpfAppliedAtTarget);
 
     let cashFits = true;
     if (cashProvided) cashFits = cashNeededAtTarget <= cashOnHand + 1;
 
-    const breakdown = `<div class="target-breakdown"><strong>At ${fmt(targetPrice)}:</strong> total downpayment is ${fmt(downpaymentAtTarget)} (${(downpaymentPct*100).toFixed(0)}%). ` +
-      `Your CPF OA covers ${fmt(cpfAppliedAtTarget)}, leaving <strong>${fmt(cashNeededAtTarget)} in cash to top up</strong>.` +
+    const breakdown = `<div class="target-breakdown"><strong>At ${fmt(targetPrice)}:</strong> total downpayment is ${fmt(downpaymentAtTarget)} (${(downpaymentPct*100).toFixed(0)}%), plus an estimated ${fmt(targetBSD)} Buyer Stamp Duty and ${fmt(fixedCashCpfFees)} in legal/resale fees. ` +
+      `Your CPF OA covers ${fmt(cpfAppliedAtTarget)} of that combined total, leaving <strong>${fmt(cashNeededAtTarget)} in cash to top up</strong>.` +
       (cashProvided
         ? (cashFits
             ? ` That's within your stated ${fmt(cashOnHand)} cash on hand, with ${fmt(Math.max(0, cashOnHand - cashNeededAtTarget))} to spare.`
@@ -767,9 +864,12 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
     bOA: bOA || null, cbOA: hasCB ? (cbOA || null) : null,
     carLoan: num('car-loan') || null, otherDebt: num('other-debt') || null,
     loanRatePct: (loanRate*100).toFixed(2), ltvPct: (ltv*100).toFixed(0),
+    // Upfront transaction costs deducted from cash/CPF above (BSD is price-dependent,
+    // so it's shown per-scenario; legal + HDB resale fee are the same in both)
+    legalFee: legalFee || null, hdbResaleFee: hdbResaleFeeAmt || null, fixedCashCpfFees,
     // Two-scenario breakdown (Income/MSR vs Cash/CPF) for the PDF
-    scn1Loan, scn1Price, scn1Monthly, scn1Downpayment, scn1FundsAvailable, scn1Gap,
-    scn2Price, scn2Loan, scn2Monthly, scn2Downpayment, scn2FundsAvailable, scn2Gap,
+    scn1Loan, scn1Price, scn1Monthly, scn1Downpayment, scn1BSD, scn1FundsAvailable, scn1Gap,
+    scn2Price, scn2Loan, scn2Monthly, scn2Downpayment, scn2BSD, scn2FundsAvailable, scn2Gap,
     cashChecked: cashProvided
   };
 
@@ -804,6 +904,9 @@ function generatePdf(lead){
     line('Max loan amount', fmt(lastResults.scn1Loan));
     line('Monthly instalment', fmt(lastResults.scn1Monthly));
     line('Downpayment required', fmt(lastResults.scn1Downpayment));
+    line('Buyer Stamp Duty (BSD)', fmt(lastResults.scn1BSD));
+    line('Legal & resale fees', fmt(lastResults.fixedCashCpfFees));
+    line('Total cash/CPF needed', fmt(lastResults.scn1Downpayment + lastResults.scn1BSD + lastResults.fixedCashCpfFees));
     line('Your cash + CPF available', fmt(lastResults.scn1FundsAvailable));
     line(lastResults.scn1Gap > 0 ? 'Shortfall' : 'Surplus', fmt(Math.abs(lastResults.scn1Gap)));
     y += 2;
@@ -813,6 +916,9 @@ function generatePdf(lead){
       line('Resulting loan amount', fmt(lastResults.scn2Loan));
       line('Monthly instalment', fmt(lastResults.scn2Monthly));
       line('Downpayment required', fmt(lastResults.scn2Downpayment));
+      line('Buyer Stamp Duty (BSD)', fmt(lastResults.scn2BSD));
+      line('Legal & resale fees', fmt(lastResults.fixedCashCpfFees));
+      line('Total cash/CPF needed', fmt(lastResults.scn2Downpayment + lastResults.scn2BSD + lastResults.fixedCashCpfFees));
       line('Your cash + CPF available', fmt(lastResults.scn2FundsAvailable));
       line(lastResults.scn2Gap > 0.5 ? 'Shortfall' : 'Surplus', fmt(Math.abs(lastResults.scn2Gap)));
       y += 2;
@@ -833,7 +939,7 @@ function generatePdf(lead){
     if (lastResults.hdbPrice) line('Your estimated current HDB sale price', fmt(lastResults.hdbPrice));
     y += 4;
     doc.setFontSize(9);
-    const disclaimer = 'This is an illustrative estimate based on public MAS/CPF formulas only. It is not a bank loan approval, mortgage advice, or financial advice. Actual eligibility is determined by your bank/HDB and CPF Board based on your full financial profile. Speak with Serene to get a proper affordability assessment.';
+    const disclaimer = 'This is an illustrative estimate based on public MAS/CPF formulas only. It is not a bank loan approval, mortgage advice, or financial advice. Buyer Stamp Duty, HDB resale application fee, and legal/conveyancing fee are deducted from cash/CPF as shown; Additional Buyer\'s Stamp Duty (ABSD) and CPF withdrawal limits are not modeled. Actual eligibility is determined by your bank/HDB and CPF Board based on your full financial profile. Speak with Serene to get a proper affordability assessment.';
     const split = doc.splitTextToSize(disclaimer, 180);
     doc.text(split, 14, y);
     doc.save('Affordability-Breakdown-' + (lead.name || 'Lead').replace(/\s+/g,'-') + '.pdf');

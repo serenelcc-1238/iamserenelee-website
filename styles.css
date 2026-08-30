@@ -271,6 +271,17 @@ ul.care-list li::marker{color:var(--gold-dark);}
 .scenario-line-highlight{margin-top:2px;padding-top:8px;border-top:1px solid var(--line);border-bottom:none;}
 .scenario-line-highlight strong{color:var(--gold-dark);}
 .scenario-note{font-size:.78rem;color:var(--muted);font-style:italic;}
+/* Upfront Costs (BSD + Fees) is collapsed into one summary row by default —
+   tap/click to expand the BSD / legal & resale fee / total-needed breakdown,
+   so the card doesn't grow 3 lines taller for every buyer who doesn't need
+   the detail. Native <details>/<summary> handles the show/hide, no JS needed. */
+.scenario-details .scenario-line{border-bottom:1px dashed var(--line);}
+.scenario-details .scenario-line:last-child{border-bottom:none;}
+.scenario-summary{cursor:pointer;list-style:none;position:relative;padding-right:16px;-webkit-tap-highlight-color:transparent;}
+.scenario-summary::-webkit-details-marker{display:none;}
+.scenario-summary::after{content:'▾';position:absolute;right:0;top:50%;transform:translateY(-50%);font-size:.65em;color:var(--muted);transition:transform .15s ease;}
+.scenario-details[open] .scenario-summary::after{transform:translateY(-50%) rotate(180deg);}
+.scenario-details .scenario-line span{padding-left:10px;opacity:.9;}
 @media(min-width:640px){
   .scenario-card{padding:16px;}
   .scenario-card-title{font-size:.9rem;margin-bottom:12px;padding-bottom:8px;}
