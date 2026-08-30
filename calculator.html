@@ -576,7 +576,18 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
   const VARIABLE_INCOME_WEIGHT = 0.70;   // only 70% of bonus/commission/freelance counts
   const TDSR_CAP = 0.55;                 // total debt obligations capped at 55% of gross income (bank loans only)
   const MSR_CAP = 0.30;                  // Mortgage Servicing Ratio — applies to HDB flats & ECs
-  const HDB_LOAN_INCOME_CEILING = 14000; // monthly household income ceiling for HDB loan, families (2026); $21,000 extended family, $7,000 singles
+  // Raised at National Day Rally 2026, effective 24 Aug 2026: families $14,000 -> $16,000,
+  // singles $7,000 -> $8,000. Applies across the unified HFE (Flat Eligibility) letter —
+  // BTO, resale + CPF grants, and HDB Concessionary Loan all use this same threshold.
+  // Extended/multi-generation family ceiling ($21,000) was not reported as changing in this
+  // round — worth Serene double-checking directly with HDB if it comes up with a client.
+  const HDB_LOAN_INCOME_CEILING = 16000; // monthly household income ceiling for HDB loan, families (2026); $21,000 extended family, $8,000 singles
+  // New EC income ceiling raised $16,000 -> $18,000 at the same announcement, but ONLY for
+  // EC projects whose land-sale tender closes on or after 24 Aug 2026 — a New EC launch on
+  // an earlier land tender still sits at the old $16,000 ceiling. Since this tool can't know
+  // which specific launch a client means, the note below surfaces both figures.
+  const EC_INCOME_CEILING_NEW = 18000;
+  const EC_INCOME_CEILING_OLD = 16000;
   const MIN_CASH_PCT = 0.05;             // min. 5% of price must be cash — bank loans only; HDB loans have no minimum cash component
   const MAX_TENURE_YEARS = 30;
   const MIN_TENURE_YEARS = 5;
@@ -889,20 +900,31 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
     + (!targetIsSurplus && cashBinding ? ` Your final estimate above is capped by your cash on hand rather than your income.` : '')
     + ` Purchase price and loan figures above are net of Buyer Stamp Duty${propertyType === 'hdb' ? ', the HDB resale application fee,' : ' and'} and your stated legal/conveyancing fee, all assumed payable from cash/CPF OA. Additional Buyer's Stamp Duty (ABSD) and CPF withdrawal (Valuation) limits are not modeled — assumes a Singapore Citizen buying a first residential property.`;
 
-  /* --- HDB loan eligibility note (income ceiling) --- */
+  /* --- Income ceiling note (HDB loan eligibility, or New EC purchase eligibility) --- */
   const loanEligibilityNote = document.getElementById('loanEligibilityNote');
+  // HDB's own income ceiling test uses full average monthly household income (not the
+  // 70%-weighted variable-income figure used above for MSR/TDSR serviceability) — an estimate only.
+  const fullMonthlyIncomeForCeiling = totalFixedIncome + ((bVariable + cbVariable) / 12);
   if (propertyType === 'hdb') {
-    // HDB's own income ceiling test uses full average monthly household income (not the 70%-weighted
-    // variable-income figure used above for MSR/TDSR serviceability) — this is an estimate only.
-    const fullMonthlyIncomeForCeiling = totalFixedIncome + ((bVariable + cbVariable) / 12);
     loanEligibilityNote.style.display = 'block';
     if (fullMonthlyIncomeForCeiling > HDB_LOAN_INCOME_CEILING) {
-      loanEligibilityNote.innerHTML = `Your estimated household income (~${fmt(fullMonthlyIncomeForCeiling)}/month) is above the current HDB loan income ceiling of ${fmt(HDB_LOAN_INCOME_CEILING)}/month for families. An HDB Concessionary Loan is likely not available at this income level — a bank loan would apply instead. (The ceiling is ${fmt(21000)} for extended families and ${fmt(7000)} for singles.)`;
+      loanEligibilityNote.innerHTML = `Your estimated household income (~${fmt(fullMonthlyIncomeForCeiling)}/month) is above the current HDB loan income ceiling of ${fmt(HDB_LOAN_INCOME_CEILING)}/month for families (raised from ${fmt(14000)} at National Day Rally 2026, effective 24 Aug 2026). An HDB Concessionary Loan is likely not available at this income level — a bank loan would apply instead. (The ceiling is ${fmt(21000)} for extended families and ${fmt(8000)} for singles.)`;
     } else {
-      loanEligibilityNote.innerHTML = `Your estimated household income is within the current HDB loan income ceiling of ${fmt(HDB_LOAN_INCOME_CEILING)}/month for families, so an HDB Concessionary Loan may be an option — subject to HDB's other eligibility rules (citizenship, prior HDB loans, property ownership history, remaining lease). Serene can confirm your actual eligibility.`;
+      loanEligibilityNote.innerHTML = `Your estimated household income is within the current HDB loan income ceiling of ${fmt(HDB_LOAN_INCOME_CEILING)}/month for families (raised from ${fmt(14000)} at National Day Rally 2026, effective 24 Aug 2026), so an HDB Concessionary Loan may be an option — subject to HDB's other eligibility rules (citizenship, prior HDB loans, property ownership history, remaining lease). Serene can confirm your actual eligibility.`;
     }
   } else {
-    loanEligibilityNote.style.display = 'none';
+    // New EC eligibility ceiling was also raised at NDR 2026, but only for EC projects on a
+    // land-sale tender closing on or after 24 Aug 2026 — an EC launch on an earlier land
+    // tender still sits at the old $16,000 ceiling. Shown as a range since this tool has no
+    // way to know which specific launch a client is asking about.
+    loanEligibilityNote.style.display = 'block';
+    if (fullMonthlyIncomeForCeiling > EC_INCOME_CEILING_NEW) {
+      loanEligibilityNote.innerHTML = `Your estimated household income (~${fmt(fullMonthlyIncomeForCeiling)}/month) is above the New EC income ceiling either way — ${fmt(EC_INCOME_CEILING_OLD)} for EC launches on an older land tender, or ${fmt(EC_INCOME_CEILING_NEW)} for those on a land tender closing on/after 24 Aug 2026 (raised at National Day Rally 2026). You'd likely need to look at a resale EC or private property instead — Serene can confirm which projects you qualify for.`;
+    } else if (fullMonthlyIncomeForCeiling > EC_INCOME_CEILING_OLD) {
+      loanEligibilityNote.innerHTML = `Your estimated household income (~${fmt(fullMonthlyIncomeForCeiling)}/month) is above the older New EC income ceiling of ${fmt(EC_INCOME_CEILING_OLD)}, but within the new ${fmt(EC_INCOME_CEILING_NEW)} ceiling that applies to EC projects on a land tender closing on/after 24 Aug 2026 (National Day Rally 2026). Which launches you qualify for depends on that project's land-tender date — Serene can confirm.`;
+    } else {
+      loanEligibilityNote.innerHTML = `Your estimated household income is within the New EC income ceiling (${fmt(EC_INCOME_CEILING_OLD)}–${fmt(EC_INCOME_CEILING_NEW)}/month depending on the project's land-tender date), so a New EC may be an option — subject to HDB's other eligibility rules (citizenship, prior property ownership, remaining lease). Serene can confirm your actual eligibility.`;
+    }
   }
 
   lastResults = {
