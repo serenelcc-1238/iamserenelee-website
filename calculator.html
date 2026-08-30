@@ -1170,14 +1170,30 @@ function generatePdf(lead){
     const disclaimer = 'This is an illustrative estimate based on public MAS/CPF formulas only. It is not a bank loan approval, mortgage advice, or financial advice. Buyer Stamp Duty, HDB resale application fee, and legal/conveyancing fee are deducted from cash/CPF as shown; Additional Buyer\'s Stamp Duty (ABSD) and CPF withdrawal limits are not modeled. Actual eligibility is determined by your bank/HDB and CPF Board based on your full financial profile. Speak with Serene to get a proper affordability assessment.';
     const split = doc.splitTextToSize(disclaimer, availableW);
     doc.text(split, marginLeft, y);
+
+    // Grab a base64 copy before saving, so it can also ride along to Serene's
+    // pre-alert email as an attachment — this doesn't affect the visitor's
+    // own download below.
+    const pdfBase64 = doc.output('datauristring').split(',')[1] || null;
     doc.save('Affordability-Breakdown-' + (lead.name || 'Lead').replace(/\s+/g,'-') + '.pdf');
+    return pdfBase64;
   } catch(err){
     console.error('PDF generation failed', err);
+    return null;
   }
 }
 
 /* ---------- Shared lead submit handler ---------- */
 function submitLead(lead, formEl, errorEl, thankYouEl, generatePdfAfter){
+  // Build the PDF first (when this lead gets one) so a copy can be sent along
+  // with the webhook payload — the Apps Script attaches it to Serene's
+  // pre-alert email. This still also triggers the visitor's own download,
+  // exactly as before.
+  if (generatePdfAfter) {
+    lead.pdfFilename = 'Affordability-Breakdown-' + (lead.name || 'Lead').replace(/\s+/g,'-') + '.pdf';
+    lead.pdfBase64 = generatePdf(lead);
+  }
+
   if (GAS_WEBHOOK_URL){
     fetch(GAS_WEBHOOK_URL, {
       method:'POST',
@@ -1191,7 +1207,6 @@ function submitLead(lead, formEl, errorEl, thankYouEl, generatePdfAfter){
 
   if (formEl) formEl.style.display = 'none';
   if (thankYouEl) thankYouEl.classList.add('show');
-  if (generatePdfAfter) generatePdf(lead);
 }
 
 /* ---------- Calculator gate lead form ---------- */
