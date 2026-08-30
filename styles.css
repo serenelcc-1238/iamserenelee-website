@@ -207,6 +207,12 @@ header{
 .about-copy .cea{font-size:.85rem;color:var(--muted);margin-bottom:16px;font-weight:600;}
 .about-copy p{line-height:1.75;font-size:1rem;max-width:620px;}
 
+/* CARE mission list */
+ul.care-list{margin:14px 0 22px;padding-left:20px;max-width:620px;}
+ul.care-list li{margin-bottom:10px;line-height:1.6;font-size:.95rem;color:var(--muted);}
+ul.care-list li strong{color:var(--navy-900);}
+ul.care-list li::marker{color:var(--gold-dark);}
+
 /* CALCULATOR (verbatim from live tested build) */
 .calc-section{background:var(--cream);}
 .calc-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:28px;max-width:720px;margin:0 auto;}
@@ -281,14 +287,22 @@ header{
 .social-links a:hover{background:var(--gold);color:#fff;}
 
 /* FOOTER */
-footer{background:var(--navy-900);color:#cdd8e2;padding:44px 0 24px;}
-.footer-era{display:flex;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid rgba(255,255,255,.12);flex-wrap:wrap;}
+footer{background:var(--cream-2);color:var(--muted);padding:40px 0 24px;border-top:4px solid var(--gold);}
+footer .container{display:flex;gap:44px;flex-wrap:wrap;}
+.footer-era{
+  display:flex;align-items:center;gap:16px;flex:1 1 320px;min-width:260px;
+  margin-bottom:0;padding:0 40px 0 0;border-bottom:none;border-right:1px solid var(--line);
+}
+@media(max-width:760px){
+  .footer-era{border-right:none;border-bottom:1px solid var(--line);padding:0 0 22px;margin-bottom:22px;width:100%;}
+}
 .era-logo{height:52px;}
-.footer-era-name{color:#fff;font-weight:700;font-size:.95rem;}
-.footer-era-line{font-size:.75rem;color:#93a7b8;margin-top:2px;}
-.legal-box{font-size:.8rem;color:#93a7b8;}
-.legal-box p{margin:0 0 8px;}
-.legal-box strong{color:#fff;}
+.footer-era-name{color:var(--navy-900);font-weight:700;font-size:1rem;}
+.footer-era-line{font-size:.78rem;color:var(--muted);margin-top:3px;}
+.legal-box{font-size:.82rem;color:var(--muted);flex:1 1 320px;min-width:260px;}
+.legal-box p{margin:0 0 9px;}
+.legal-box strong{color:var(--navy-900);}
+.legal-box p:last-child{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);font-size:.75rem;}
 
 /* FLOATING WHATSAPP */
 .fab-wa{
