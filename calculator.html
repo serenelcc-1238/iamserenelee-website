@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Affordability Calculator | Serene Lee, ERA Realty</title>
-<meta name="description" content="See what HDB flat or Executive Condo price you could afford based on public MAS/HDB/CPF formulas — a private, judgment-free first look at your numbers.">
+<meta name="description" content="See what HDB flat or new Executive Condo price you could afford based on public MAS/HDB/CPF formulas — a private, judgment-free first look at your numbers.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%230b2a4a%22/><text x=%2250%22 y=%2266%22 font-size=%2258%22 text-anchor=%22middle%22 fill=%22%23c9a227%22 font-family=%22Georgia,serif%22>S</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -41,7 +41,7 @@
     <div class="section-head">
       <span class="eyebrow">Affordability Check</span>
       <h1 style="font-size:1.9rem;">See what you could afford — in under 2 minutes</h1>
-      <p>This isn't a bank pre-approval. It's a private, judgment-free first look at your numbers for a resale HDB flat or Executive Condo, using the same public MAS/HDB/CPF formulas banks reference for a home loan.</p>
+      <p>This isn't a bank pre-approval. It's a private, judgment-free first look at your numbers for a resale HDB flat or new Executive Condo, using the same public MAS/HDB/CPF formulas banks reference for a home loan.</p>
     </div>
 
     <div class="calc-card">
@@ -50,7 +50,7 @@
           <label>What are you buying?</label>
           <div class="ptype-row" id="ptypeRow">
             <label class="ptype-option"><input type="radio" name="ptype" value="hdb" checked> Resale HDB Flat</label>
-            <label class="ptype-option"><input type="radio" name="ptype" value="ec"> Exec Condo</label>
+            <label class="ptype-option"><input type="radio" name="ptype" value="ec"> New Exec Condo</label>
           </div>
         </div>
 
@@ -1057,7 +1057,7 @@ function generatePdf(lead){
     doc.setFontSize(11);
     let y = 32;
     const line = (label, val) => { doc.text(`${label}: ${val}`, marginLeft, y); y += 6; };
-    const ptypeLabel = lastResults.propertyType === 'hdb' ? 'Resale HDB Flat' : 'Exec Condo';
+    const ptypeLabel = lastResults.propertyType === 'hdb' ? 'Resale HDB Flat' : 'New Exec Condo';
     line('Property type', ptypeLabel);
     line('Loan type', lastResults.loanType);
     y += 2;
@@ -1196,7 +1196,7 @@ document.getElementById('leadForm').addEventListener('submit', function(e){
     topic: lastResults ? `${lastResults.propertyType.toUpperCase()} / ${lastResults.loanType}` : '',
     // What the client actually typed into the form — sent as its own fields so
     // every input shows up as a column in the Sheet, not just the results.
-    propertyType: lastResults ? (lastResults.propertyType === 'hdb' ? 'Resale HDB Flat' : 'Exec Condo') : '',
+    propertyType: lastResults ? (lastResults.propertyType === 'hdb' ? 'Resale HDB Flat' : 'New Exec Condo') : '',
     loanType: lastResults ? lastResults.loanType : '',
     buyerIncome: lastResults ? lastResults.bIncome : '',
     buyerAge: lastResults ? lastResults.bAge : '',
