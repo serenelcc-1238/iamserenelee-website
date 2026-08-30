@@ -245,7 +245,6 @@ ul.care-list li::marker{color:var(--gold-dark);}
 .slider-num-wrap{display:flex;align-items:center;gap:4px;flex:0 0 auto;}
 .slider-number{width:52px;padding:6px 4px;text-align:center;border-radius:7px;border:1.5px solid var(--line);font-size:.9rem;font-family:'Inter',sans-serif;background:#fff;color:var(--ink);}
 .slider-unit{font-size:.8rem;color:var(--muted);}
-.hdb-price-wrap input:disabled{background:var(--cream-2);color:var(--muted);}
 .divider{height:1px;background:var(--line);margin:22px 0;}
 #resultsPanel{display:none;margin-top:32px;}
 #resultsPanel.show{display:block;}
