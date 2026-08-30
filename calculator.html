@@ -180,8 +180,9 @@
         <div class="scenario-grid">
           <div class="scenario-card">
             <div class="scenario-card-title" id="scn1Title">Scenario 1 — Based on Income (MSR)</div>
-            <div class="scenario-line"><span>Max Loan Amount</span><strong id="scn1LoanEl">S$0</strong></div>
             <div class="scenario-line"><span id="scn1PriceLabel">Max HDB Purchase Price</span><strong id="scn1PriceEl">S$0</strong></div>
+            <div class="scenario-line"><span>Max Loan Amount</span><strong id="scn1LoanEl">S$0</strong></div>
+            <div class="scenario-line"><span>Monthly Instalment</span><strong id="scn1MonthlyEl">S$0</strong></div>
             <div class="scenario-line"><span id="scn1DownpaymentLabel">Downpayment Required (25%)</span><strong id="scn1DownpaymentEl">S$0</strong></div>
             <div class="scenario-line"><span>Your Cash + CPF Available</span><strong id="scn1FundsEl">S$0</strong></div>
             <div class="scenario-line scenario-line-highlight"><span id="scn1GapLabelEl">Shortfall</span><strong id="scn1GapEl">S$0</strong></div>
@@ -191,24 +192,24 @@
             <div id="scn2Content">
               <div class="scenario-line"><span id="scn2PriceLabel">Max HDB Purchase Price</span><strong id="scn2PriceEl">S$0</strong></div>
               <div class="scenario-line"><span>Resulting Loan Amount</span><strong id="scn2LoanEl">S$0</strong></div>
-              <div class="scenario-line"><span>Resulting Monthly Instalment</span><strong id="scn2MonthlyEl">S$0</strong></div>
+              <div class="scenario-line"><span>Monthly Instalment</span><strong id="scn2MonthlyEl">S$0</strong></div>
             </div>
             <div class="scenario-note" id="scn2Placeholder" style="display:none;">Enter Cash on hand above to see this scenario.</div>
           </div>
         </div>
 
         <div class="result-hero">
-          <div class="sub" id="recommendationLabel">Recommended affordability &mdash; whichever scenario is lower</div>
-          <div class="sub" id="resMaxLoanLabel">Estimated maximum HDB loan amount</div>
-          <div class="figure" id="resMaxLoan">S$0</div>
-          <div class="sub" id="resMaxLoanRange">Range: S$0 &ndash; S$0</div>
+          <div class="sub" id="recommendationLabel">Recommended: Scenario 1</div>
+          <div class="sub" id="resHeroPriceLabel">Estimated maximum HDB purchase price</div>
+          <div class="figure" id="resHeroPrice">S$0</div>
+          <div class="sub" id="resHeroPriceRange">Range: S$0 &ndash; S$0</div>
         </div>
 
         <div class="result-grid">
           <div class="result-tile result-tile-wide">
-            <div class="label" id="resPriceLabel">Estimated Maximum Purchase Price</div>
-            <div class="value" id="resMaxPrice">S$0</div>
-            <div class="note" id="resPriceNote">This is the loan above plus your downpayment (CPF/cash) — see the breakdown below.</div>
+            <div class="label" id="resLoanLabel">Estimated Maximum Loan Amount</div>
+            <div class="value" id="resLoanAmount">S$0</div>
+            <div class="note" id="resLoanNote">This is the loan portion of the purchase price above; the rest is funded by CPF/cash — see the downpayment breakdown below.</div>
           </div>
           <div class="result-tile">
             <div class="label">Est. Monthly Mortgage</div>
@@ -601,6 +602,7 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
   // ignoring whether the buyer actually has the cash/CPF to fund that downpayment.
   const scn1Price = incomeMaxPrice;
   const scn1Loan = maxLoanQuantum;
+  const scn1Monthly = scn1Loan > 0 ? scn1Loan * r / (1 - Math.pow(1 + r, -n)) : 0;
   const scn1Downpayment = incomeMaxPrice * downpaymentPct;
   const scn1MinCash = incomeMaxPrice * minCashPct;
   const scn1CpfOrCash = incomeMaxPrice * (downpaymentPct - minCashPct);
@@ -622,9 +624,10 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
   document.getElementById('scn1Title').textContent = usesHdbLoan
     ? 'Scenario 1 — Based on Income (MSR)'
     : 'Scenario 1 — Based on Income (MSR & TDSR)';
-  document.getElementById('scn1LoanEl').textContent = fmt(scn1Loan);
   document.getElementById('scn1PriceLabel').textContent = `Max ${propNoun} Purchase Price`;
   document.getElementById('scn1PriceEl').textContent = fmt(scn1Price);
+  document.getElementById('scn1LoanEl').textContent = fmt(scn1Loan);
+  document.getElementById('scn1MonthlyEl').textContent = fmt(scn1Monthly);
   document.getElementById('scn1DownpaymentLabel').textContent = `Downpayment Required (${(downpaymentPct*100).toFixed(0)}%)`;
   document.getElementById('scn1DownpaymentEl').textContent = fmt(scn1Downpayment);
   document.getElementById('scn1FundsEl').textContent = fmt(scn1FundsAvailable) + (cashProvided ? '' : ' (CPF only — cash on hand not entered)');
@@ -653,30 +656,25 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
     scn2Placeholder.style.display = 'block';
   }
 
-  /* --- Recommendation banner label --- */
+  /* --- Recommendation banner: names which scenario wins, and leads with
+     Max Purchase Price (the loan amount for that same scenario is shown as
+     a secondary tile below, so nothing is lost — just re-ordered). --- */
+  const recommendedScenario = cashBinding ? 'Scenario 2' : 'Scenario 1';
   document.getElementById('recommendationLabel').textContent = cashBinding
-    ? 'Recommended affordability — Scenario 2 is lower (your Cash/CPF is the binding constraint)'
+    ? `Recommended: ${recommendedScenario} (Cash/CPF is your binding constraint)`
     : (cashProvided
-        ? 'Recommended affordability — Scenario 1 is lower (your Income/MSR is the binding constraint)'
-        : 'Recommended affordability — based on Scenario 1 (enter Cash on hand to compare against Scenario 2)');
-
-  /* --- Render main results ---
-     Headline is the max LOAN amount (what a bank/HDB would actually approve);
-     the purchase price (loan + downpayment) is shown as a secondary figure,
-     since the loan itself is the number buyers usually compare against
-     quick-reference tables. Both use loanQuantumAtMaxPrice/maxPrice, which
-     already reflect whichever of income or cash-on-hand is the binding
-     constraint. */
-  document.getElementById('resMaxLoanLabel').textContent =
-    propertyType === 'hdb' ? 'Estimated maximum HDB loan amount' : 'Estimated maximum EC loan amount';
-  document.getElementById('resMaxLoan').textContent = fmt(loanQuantumAtMaxPrice);
-  document.getElementById('resMaxLoanRange').textContent =
-    `Range: ${fmt(loanQuantumAtMaxPrice*0.9)} – ${fmt(loanQuantumAtMaxPrice)}`;
-  document.getElementById('resPriceLabel').textContent =
-    propertyType === 'hdb' ? 'Estimated Maximum Resale HDB Flat Price' : 'Estimated Maximum EC Price';
-  document.getElementById('resMaxPrice').textContent = fmt(maxPrice);
-  document.getElementById('resPriceNote').textContent =
-    `This is the loan above (${fmt(loanQuantumAtMaxPrice)}) plus your ${(downpaymentPct*100).toFixed(0)}% downpayment — see the breakdown below.`;
+        ? `Recommended: ${recommendedScenario} (Income/MSR is your binding constraint)`
+        : `Recommended: ${recommendedScenario} (enter Cash on hand to compare against Scenario 2)`);
+  document.getElementById('resHeroPriceLabel').textContent =
+    propertyType === 'hdb' ? 'Estimated maximum HDB purchase price' : 'Estimated maximum EC purchase price';
+  document.getElementById('resHeroPrice').textContent = fmt(maxPrice);
+  document.getElementById('resHeroPriceRange').textContent =
+    `Range: ${fmt(maxPrice*0.9)} – ${fmt(maxPrice)}`;
+  document.getElementById('resLoanLabel').textContent =
+    propertyType === 'hdb' ? 'Estimated Maximum Loan Amount' : 'Estimated Maximum EC Loan Amount';
+  document.getElementById('resLoanAmount').textContent = fmt(loanQuantumAtMaxPrice);
+  document.getElementById('resLoanNote').textContent =
+    `This is the loan portion of the ${fmt(maxPrice)} purchase price above; the remaining ${(downpaymentPct*100).toFixed(0)}% is funded by CPF/cash — see the downpayment breakdown below.`;
   document.getElementById('resMonthly').textContent = fmt(monthlyAtMaxPrice);
   if (cashBinding) {
     document.getElementById('resMonthlyNote').textContent =
