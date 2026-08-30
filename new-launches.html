@@ -42,8 +42,30 @@
 
 <section style="padding-top:20px;">
   <div class="container">
-    <div class="card-grid">
-      <div class="launch-card">
+    <div class="filter-bar">
+      <div class="filter-group">
+        <span class="filter-group-label">Region:</span>
+        <button type="button" class="filter-chip active" data-filter-region="all">All</button>
+        <button type="button" class="filter-chip" data-filter-region="CCR">CCR</button>
+        <button type="button" class="filter-chip" data-filter-region="RCR">RCR</button>
+        <button type="button" class="filter-chip" data-filter-region="OCR">OCR</button>
+      </div>
+      <div class="filter-group">
+        <span class="filter-group-label">Tenure:</span>
+        <button type="button" class="filter-chip active" data-filter-tenure="all">All</button>
+        <button type="button" class="filter-chip" data-filter-tenure="leasehold">Leasehold 99</button>
+        <button type="button" class="filter-chip" data-filter-tenure="freehold">Freehold / 999-Yr</button>
+      </div>
+      <div class="filter-group">
+        <label for="topSort" class="filter-group-label">Sort by TOP:</label>
+        <select id="topSort" class="sort-select">
+          <option value="asc">Earliest first</option>
+          <option value="desc">Latest first</option>
+        </select>
+      </div>
+    </div>
+    <div class="card-grid" id="launchGrid">
+      <div class="launch-card" data-region="OCR" data-tenure="leasehold" data-top="2031.4">
         <div class="launch-thumb"><img src="https://salesplus-public-asset-prd.s3.ap-southeast-1.amazonaws.com/projects/vela_bay/media/6cce68e67e7d78e6b5f5842c16cff6d6d1ff8bc8.jpg" alt="Vela Bay artist's impression" loading="lazy"><span class="launch-status">Now Selling</span></div>
         <div class="launch-body">
           <div class="launch-name">Vela Bay</div>
@@ -53,7 +75,7 @@
           <a href="https://wa.me/6580868568?text=Hi%20Serene%2C%20I%27d%20like%20to%20find%20out%20more%20about%20Vela%20Bay." target="_blank" rel="noopener" class="btn btn-gold btn-block">Enquire via WhatsApp</a>
         </div>
       </div>
-      <div class="launch-card">
+      <div class="launch-card" data-region="RCR" data-tenure="leasehold" data-top="2029.3">
         <div class="launch-thumb"><img src="https://salesplus-public-asset-prd.s3.ap-southeast-1.amazonaws.com/projects/hudson_place_residences/media/e952655e509180c45937ec9eeed76c6dd037d81c.jpg" alt="Hudson Place Residences artist's impression" loading="lazy"><span class="launch-status">Now Selling</span></div>
         <div class="launch-body">
           <div class="launch-name">Hudson Place Residences</div>
@@ -63,7 +85,7 @@
           <a href="https://wa.me/6580868568?text=Hi%20Serene%2C%20I%27d%20like%20to%20find%20out%20more%20about%20Hudson%20Place%20Residences." target="_blank" rel="noopener" class="btn btn-gold btn-block">Enquire via WhatsApp</a>
         </div>
       </div>
-      <div class="launch-card">
+      <div class="launch-card" data-region="CCR" data-tenure="leasehold" data-top="2030.2">
         <div class="launch-thumb"><img src="https://salesplus-public-asset-prd.s3.ap-southeast-1.amazonaws.com/projects/river_modern/media/1b3aea97c7a44c944577db2bb15fa213197ccec8.jpg" alt="River Modern artist's impression" loading="lazy"><span class="launch-status">Now Selling</span></div>
         <div class="launch-body">
           <div class="launch-name">River Modern</div>
@@ -73,7 +95,7 @@
           <a href="https://wa.me/6580868568?text=Hi%20Serene%2C%20I%27d%20like%20to%20find%20out%20more%20about%20River%20Modern." target="_blank" rel="noopener" class="btn btn-gold btn-block">Enquire via WhatsApp</a>
         </div>
       </div>
-      <div class="launch-card">
+      <div class="launch-card" data-region="OCR" data-tenure="leasehold" data-top="2029.3">
         <div class="launch-thumb"><img src="https://salesplus-public-asset-prd.s3.ap-southeast-1.amazonaws.com/projects/lentor_gardens_residences/media/b4496dfa030f5a98ac223ca4a232a3e8eba9d6fe.jpg" alt="Lentor Gardens Residences artist's impression" loading="lazy"><span class="launch-status">Now Selling</span></div>
         <div class="launch-body">
           <div class="launch-name">Lentor Gardens Residences</div>
@@ -84,6 +106,7 @@
         </div>
       </div>
     </div>
+    <p id="noLaunchResults" class="no-results" style="display:none;">No launches match these filters right now — WhatsApp Serene to ask about upcoming projects that might fit.</p>
     <p style="color:var(--muted);font-size:.8rem;margin-top:26px;">Images are developer-provided artist's impressions; prices shown are the lowest published starting prices per project as of 29 Aug 2026 — both sourced from ERA's official New Launch listings at <a href="https://propertyportal.era.com.sg/new-launches" target="_blank" rel="noopener" style="color:var(--navy-900);font-weight:600;">propertyportal.era.com.sg</a>. Figures are subject to change and do not include the full range of unit types available — contact Serene for a current price list, floor plans, and to arrange a viewing.</p>
   </div>
 </section>
