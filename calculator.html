@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Affordability Calculator | Serene Lee, ERA Realty</title>
-<meta name="description" content="See what private property price you could afford based on public MAS/CPF formulas — a private, judgment-free first look at your numbers.">
+<meta name="description" content="See what HDB flat or Executive Condo price you could afford based on public MAS/HDB/CPF formulas — a private, judgment-free first look at your numbers.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%230b2a4a%22/><text x=%2250%22 y=%2266%22 font-size=%2258%22 text-anchor=%22middle%22 fill=%22%23c9a227%22 font-family=%22Georgia,serif%22>S</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -41,7 +41,7 @@
     <div class="section-head">
       <span class="eyebrow">Affordability Check</span>
       <h1 style="font-size:1.9rem;">See what you could afford — in under 2 minutes</h1>
-      <p>This isn't a bank pre-approval. It's a private, judgment-free first look at your numbers, using the same public MAS/CPF formulas banks reference for a home loan.</p>
+      <p>This isn't a bank pre-approval. It's a private, judgment-free first look at your numbers for a resale HDB flat or Executive Condo, using the same public MAS/HDB/CPF formulas banks reference for a home loan.</p>
     </div>
 
     <div class="calc-card">
@@ -51,7 +51,6 @@
           <div class="ptype-row" id="ptypeRow">
             <label class="ptype-option"><input type="radio" name="ptype" value="hdb" checked> Resale HDB Flat</label>
             <label class="ptype-option"><input type="radio" name="ptype" value="ec"> Exec Condo</label>
-            <label class="ptype-option"><input type="radio" name="ptype" value="private"> Resale Private Property</label>
           </div>
         </div>
 
@@ -109,10 +108,20 @@
           <div class="hint">Leave blank if none. Only a portion of this counts toward your loan eligibility.</div>
         </div>
 
-        <div class="field">
-          <label for="existing-debt">Existing monthly debt obligations (SGD/month)</label>
-          <input type="number" id="existing-debt" min="0" step="10" placeholder="Car loan, personal loan, credit card min. payments">
+        <div class="live-total" id="incomeTotalDisplay">Total Monthly Assessable Income <strong>S$0</strong></div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="car-loan">Monthly car loan instalment (SGD)</label>
+            <input type="number" id="car-loan" min="0" step="10" placeholder="e.g. 800">
+          </div>
+          <div class="field">
+            <label for="other-debt">Other monthly debt (SGD)</label>
+            <input type="number" id="other-debt" min="0" step="10" placeholder="Personal loan, credit card min.">
+          </div>
         </div>
+
+        <div class="live-total" id="debtTotalDisplay">Total Monthly Debt Assessment <strong>S$0</strong></div>
 
         <div class="field">
           <label for="b-oa">Your CPF Ordinary Account (OA) balance (SGD)</label>
@@ -123,6 +132,26 @@
           <label for="cash-on-hand">Cash on hand available for the purchase (SGD)</label>
           <input type="number" id="cash-on-hand" min="0" step="1000" placeholder="e.g. 50000">
           <div class="hint">Optional — savings, fixed deposits, etc. (Combined with your co-buyer's, if any.) Leave blank to estimate based on income and CPF only.</div>
+        </div>
+
+        <div class="field financing-vars">
+          <label>Financing Variables</label>
+          <div class="slider-row">
+            <span class="slider-label">Loan Tenure</span>
+            <input type="range" id="tenure-slider" min="5" max="30" step="1" value="25">
+            <span class="slider-num-wrap"><input type="number" id="tenure-value" min="5" max="30" step="1" value="25" class="slider-number"><span class="slider-unit">yrs</span></span>
+          </div>
+          <div class="slider-row">
+            <span class="slider-label">Interest Rate</span>
+            <input type="range" id="rate-slider" min="1" max="6" step="0.1" value="4">
+            <span class="slider-num-wrap"><input type="number" id="rate-value" min="1" max="6" step="0.1" value="4" class="slider-number"><span class="slider-unit">%</span></span>
+          </div>
+          <div class="slider-row">
+            <span class="slider-label">Loan-to-Value</span>
+            <input type="range" id="ltv-slider" min="35" max="75" step="5" value="75">
+            <span class="slider-num-wrap"><input type="number" id="ltv-value" min="35" max="75" step="5" value="75" class="slider-number"><span class="slider-unit">%</span></span>
+          </div>
+          <div class="hint">Defaults follow current MAS/HDB rules based on your age and loan type above. If this isn't your first property loan, your bank may cap LTV lower (e.g. 55% or 45%) with a higher minimum cash downpayment — adjust here to test that scenario, and confirm the exact figure with your bank.</div>
         </div>
 
         <div class="field hdb-price-wrap">
@@ -147,7 +176,7 @@
       <div id="resultsPanel">
         <div class="divider"></div>
         <div class="result-hero">
-          <div class="sub" id="resMaxPriceLabel">Estimated maximum private property price</div>
+          <div class="sub" id="resMaxPriceLabel">Estimated maximum resale HDB flat price</div>
           <div class="figure" id="resMaxPrice">S$0</div>
           <div class="sub" id="resMaxPriceRange">Range: S$0 &ndash; S$0</div>
         </div>
@@ -164,9 +193,9 @@
             <div class="note">Minimum cash component of the downpayment, after applying your CPF OA to the rest.</div>
           </div>
           <div class="result-tile">
-            <div class="label">Total Downpayment (25%)</div>
+            <div class="label">Total Downpayment (<span id="downpaymentPctLabel">25</span>%)</div>
             <div class="value" id="resDownpayment">S$0</div>
-            <div class="note" id="resDownpaymentNote">Min. 5% cash, remaining 20% via CPF OA or cash.</div>
+            <div class="note" id="resDownpaymentNote">Min. 5% cash, remaining via CPF OA or cash (HDB loans: no minimum cash).</div>
           </div>
           <div class="result-tile">
             <div class="label">CPF OA Applied</div>
@@ -278,16 +307,7 @@ hdbUnsure.addEventListener('change', () => {
   if (hdbUnsure.checked) hdbPriceInput.value = '';
 });
 
-/* ---------- Property type / loan type toggle ---------- */
-const loanTypeBlock = document.getElementById('loanTypeBlock');
-function updatePtypeUI(){
-  const ptype = (document.querySelector('input[name="ptype"]:checked') || {}).value;
-  loanTypeBlock.style.display = (ptype === 'hdb') ? 'block' : 'none';
-}
-document.querySelectorAll('input[name="ptype"]').forEach(r => r.addEventListener('change', updatePtypeUI));
-updatePtypeUI();
-
-/* ---------- Helpers ---------- */
+/* ---------- Helpers (defined early so listeners below can use them) ---------- */
 function num(id){
   const el = document.getElementById(id);
   if (!el) return 0;
@@ -301,6 +321,112 @@ function hasVal(id){
 function fmt(n){
   return 'S$' + Math.round(n).toLocaleString('en-SG');
 }
+
+/* ---------- Property type / loan type toggle ---------- */
+const loanTypeBlock = document.getElementById('loanTypeBlock');
+function updatePtypeUI(){
+  const ptype = (document.querySelector('input[name="ptype"]:checked') || {}).value;
+  loanTypeBlock.style.display = (ptype === 'hdb') ? 'block' : 'none';
+}
+document.querySelectorAll('input[name="ptype"]').forEach(r => r.addEventListener('change', updatePtypeUI));
+updatePtypeUI();
+
+/* ---------- Live income / debt subtotals ---------- */
+function updateIncomeTotal(){
+  const bIncome = num('b-income');
+  const cbIncome = hasCobuyer.checked ? num('cb-income') : 0;
+  const bVariable = num('b-variable');
+  const cbVariable = hasCobuyer.checked ? num('cb-variable') : 0;
+  const assessable = (bIncome + cbIncome) + ((bVariable + cbVariable) / 12) * 0.70;
+  document.getElementById('incomeTotalDisplay').innerHTML = `Total Monthly Assessable Income <strong>${fmt(assessable)}</strong>`;
+}
+['b-income','cb-income','b-variable','cb-variable'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updateIncomeTotal);
+});
+hasCobuyer.addEventListener('change', updateIncomeTotal);
+updateIncomeTotal();
+
+function updateDebtTotal(){
+  const total = num('car-loan') + num('other-debt');
+  document.getElementById('debtTotalDisplay').innerHTML = `Total Monthly Debt Assessment <strong>${fmt(total)}</strong>`;
+}
+['car-loan','other-debt'].forEach(id => {
+  document.getElementById(id).addEventListener('input', updateDebtTotal);
+});
+updateDebtTotal();
+
+/* ---------- Financing variable sliders (Loan Tenure / Interest Rate / LTV) ----------
+   These start at the standard MAS/HDB defaults (computed from age + loan type) but can
+   be manually overridden — e.g. to model a lower LTV for a buyer who already has an
+   outstanding home loan. Once a slider is touched by hand, its auto-default stops
+   updating so a manual override isn't silently overwritten. */
+const tenureSlider = document.getElementById('tenure-slider');
+const tenureValueBox = document.getElementById('tenure-value');
+const rateSlider = document.getElementById('rate-slider');
+const rateValueBox = document.getElementById('rate-value');
+const ltvSlider = document.getElementById('ltv-slider');
+const ltvValueBox = document.getElementById('ltv-value');
+
+const sliderTouched = { tenure: false, rate: false, ltv: false };
+
+function clamp(v, min, max){ return Math.min(max, Math.max(min, v)); }
+
+function syncPair(slider, numberBox, key){
+  slider.addEventListener('input', () => {
+    numberBox.value = slider.value;
+    sliderTouched[key] = true;
+  });
+  numberBox.addEventListener('input', () => {
+    sliderTouched[key] = true;
+  });
+  numberBox.addEventListener('change', () => {
+    const min = parseFloat(slider.min), max = parseFloat(slider.max);
+    let v = parseFloat(numberBox.value);
+    if (isNaN(v)) v = min;
+    v = clamp(v, min, max);
+    numberBox.value = v;
+    slider.value = v;
+  });
+}
+syncPair(tenureSlider, tenureValueBox, 'tenure');
+syncPair(rateSlider, rateValueBox, 'rate');
+syncPair(ltvSlider, ltvValueBox, 'ltv');
+
+function setSliderDefault(slider, numberBox, key, val){
+  if (sliderTouched[key]) return;
+  slider.value = val;
+  numberBox.value = val;
+}
+
+function currentPtypeLoantype(){
+  const ptype = (document.querySelector('input[name="ptype"]:checked') || {}).value || 'hdb';
+  const loantype = ptype === 'hdb' ? ((document.querySelector('input[name="loantype"]:checked') || {}).value || 'bank') : 'bank';
+  return { ptype, loantype };
+}
+
+function refreshTenureDefault(){
+  const bAge = num('b-age');
+  if (!bAge) return;
+  const cbAge = hasCobuyer.checked ? num('cb-age') : null;
+  const olderAge = (hasCobuyer.checked && cbAge) ? Math.max(bAge, cbAge) : bAge;
+  const { ptype, loantype } = currentPtypeLoantype();
+  const cap = (ptype === 'hdb' && loantype === 'hdbloan') ? 25 : 30; // HDB loans max out at 25 years, bank loans at 30
+  const t = clamp(Math.min(cap, 65 - olderAge), 5, 30);
+  setSliderDefault(tenureSlider, tenureValueBox, 'tenure', t);
+}
+
+function refreshRateDefault(){
+  const { ptype, loantype } = currentPtypeLoantype();
+  const rate = (ptype === 'hdb' && loantype === 'hdbloan') ? 2.6 : 4.0;
+  setSliderDefault(rateSlider, rateValueBox, 'rate', rate);
+}
+
+['b-age','cb-age'].forEach(id => document.getElementById(id).addEventListener('input', refreshTenureDefault));
+hasCobuyer.addEventListener('change', refreshTenureDefault);
+document.querySelectorAll('input[name="ptype"]').forEach(r => r.addEventListener('change', () => { refreshTenureDefault(); refreshRateDefault(); }));
+document.querySelectorAll('input[name="loantype"]').forEach(r => r.addEventListener('change', () => { refreshTenureDefault(); refreshRateDefault(); }));
+refreshTenureDefault();
+refreshRateDefault();
 
 let lastResults = null; // stashed for PDF / lead payload
 
@@ -322,7 +448,7 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
   const cbAge = hasCB ? num('cb-age') : null;
   const bVariable = num('b-variable');
   const cbVariable = hasCB ? num('cb-variable') : 0;
-  const existingDebt = num('existing-debt');
+  const existingDebt = num('car-loan') + num('other-debt');
   const bOA = num('b-oa');
   const cbOA = hasCB ? num('cb-oa') : 0;
   const cashProvided = hasVal('cash-on-hand');
@@ -332,27 +458,28 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
   const targetPrice = num('target-price') || null;
 
   /* --- Exact calculation rules (do not change without re-checking against
-     current MAS/CPF Board/HDB guidelines — see README.md) --- */
+     current MAS/CPF Board/HDB guidelines — see README.md). Tenure, interest rate
+     and LTV come from the Financing Variables sliders (defaulted to standard
+     MAS/HDB rules, but user-adjustable — e.g. for a lower LTV on a 2nd loan). --- */
   const VARIABLE_INCOME_WEIGHT = 0.70;   // only 70% of bonus/commission/freelance counts
   const TDSR_CAP = 0.55;                 // total debt obligations capped at 55% of gross income (bank loans only)
-  const MSR_CAP = 0.30;                  // Mortgage Servicing Ratio — applies to HDB flats & new ECs only, not private property
-  const STRESS_TEST_RATE = 0.04;         // 4% p.a. stress-test rate for loan quantum (bank loans only)
-  const HDB_LOAN_RATE = 0.026;           // HDB concessionary rate: CPF OA rate + 0.1%, fixed — no stress test applied
+  const MSR_CAP = 0.30;                  // Mortgage Servicing Ratio — applies to HDB flats & ECs
   const HDB_LOAN_INCOME_CEILING = 14000; // monthly household income ceiling for HDB loan, families (2026); $21,000 extended family, $7,000 singles
-  const LTV = 0.75;                      // 75% loan-to-value — aligned across bank loans and HDB loans since Aug 2024
   const MIN_CASH_PCT = 0.05;             // min. 5% of price must be cash — bank loans only; HDB loans have no minimum cash component
-  const DOWNPAYMENT_PCT = 0.25;          // 25% total downpayment
-  const MAX_LOAN_AGE = 65;               // simplified age cutoff used to derive max tenure
   const MAX_TENURE_YEARS = 30;
   const MIN_TENURE_YEARS = 5;
 
-  const propertyType = (document.querySelector('input[name="ptype"]:checked') || {}).value || 'private';
-  // EC and private property are always bank-financed; only HDB flats can use an HDB Concessionary Loan
+  const propertyType = (document.querySelector('input[name="ptype"]:checked') || {}).value || 'hdb';
+  // EC is always bank-financed; only HDB flats can use an HDB Concessionary Loan
   const loanType = propertyType === 'hdb'
     ? ((document.querySelector('input[name="loantype"]:checked') || {}).value || 'bank')
     : 'bank';
   const usesHdbLoan = (propertyType === 'hdb' && loanType === 'hdbloan');
-  const msrApplies = (propertyType === 'hdb' || propertyType === 'ec');
+
+  const tenureYears = clamp(num('tenure-value') || 25, MIN_TENURE_YEARS, MAX_TENURE_YEARS);
+  const loanRate = (num('rate-value') || 4) / 100;
+  const ltv = clamp((num('ltv-value') || 75) / 100, 0.1, 0.95);
+  const downpaymentPct = 1 - ltv;
 
   const totalFixedIncome = bIncome + cbIncome;
   const totalVariableMonthly = ((bVariable + cbVariable) / 12) * VARIABLE_INCOME_WEIGHT;
@@ -360,33 +487,26 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
   const tdsrCeiling = assessableIncome * TDSR_CAP;
   const msrCeiling = assessableIncome * MSR_CAP;
 
+  // HDB flats and ECs are always MSR properties; a bank loan also has TDSR apply on
+  // top, so whichever of the two ceilings is tighter wins. An HDB Concessionary Loan
+  // is MSR-only (HDB isn't a financial institution under the MAS TDSR framework).
   let ceilingForMortgage, cappedByLabel;
   if (usesHdbLoan) {
-    // HDB Concessionary Loan: MSR only, no TDSR — HDB isn't a financial institution under the MAS TDSR framework
     ceilingForMortgage = msrCeiling;
     cappedByLabel = 'MSR (30%)';
-  } else if (msrApplies) {
-    // Bank loan on an HDB flat or EC: both MSR and TDSR apply — whichever is tighter wins
+  } else {
     ceilingForMortgage = Math.min(tdsrCeiling, msrCeiling);
     cappedByLabel = (tdsrCeiling <= msrCeiling) ? 'TDSR (55%)' : 'MSR (30%)';
-  } else {
-    // Private property: TDSR only
-    ceilingForMortgage = tdsrCeiling;
-    cappedByLabel = 'TDSR (55%)';
   }
   const availableForMortgage = Math.max(0, ceilingForMortgage - existingDebt);
 
-  const olderAge = (hasCB && cbAge) ? Math.max(bAge, cbAge) : bAge;
-  let tenureYears = MAX_LOAN_AGE - olderAge;
-  tenureYears = Math.min(MAX_TENURE_YEARS, Math.max(MIN_TENURE_YEARS, tenureYears));
   const n = tenureYears * 12;
-  const loanRate = usesHdbLoan ? HDB_LOAN_RATE : STRESS_TEST_RATE;
   const r = loanRate / 12;
 
   const maxLoanQuantum = availableForMortgage > 0
     ? availableForMortgage * (1 - Math.pow(1 + r, -n)) / r
     : 0;
-  const incomeMaxPrice = maxLoanQuantum / LTV;
+  const incomeMaxPrice = maxLoanQuantum / ltv;
 
   const totalOA = bOA + cbOA;
   const minCashPct = usesHdbLoan ? 0 : MIN_CASH_PCT;
@@ -395,13 +515,13 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
      Even if income can service a bigger loan, the buyer still needs enough
      cash + CPF OA to actually fund the downpayment. Two constraints apply:
      1) at least minCashPct of the price must be CASH (can't use CPF for this slice)
-     2) cash + CPF together must cover the full DOWNPAYMENT_PCT of the price
+     2) cash + CPF together must cover the full downpaymentPct of the price
      Whichever constraint gives the lower price is the real cash-based ceiling. */
   let maxPrice = incomeMaxPrice;
   let cashBinding = false;
   if (cashProvided) {
     const byCashFloor = minCashPct > 0 ? (cashOnHand / minCashPct) : Infinity;
-    const byTotalFunds = (cashOnHand + totalOA) / DOWNPAYMENT_PCT;
+    const byTotalFunds = (cashOnHand + totalOA) / downpaymentPct;
     const cashMaxPrice = Math.max(0, Math.min(byCashFloor, byTotalFunds));
     if (cashMaxPrice < incomeMaxPrice) {
       maxPrice = cashMaxPrice;
@@ -412,23 +532,21 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
 
   // Actual instalment for the achievable price above (equals availableForMortgage
   // when income is the binding constraint; lower than it when cash binds instead).
-  const loanQuantumAtMaxPrice = maxPrice * LTV;
+  const loanQuantumAtMaxPrice = maxPrice * ltv;
   const monthlyAtMaxPrice = loanQuantumAtMaxPrice > 0
     ? loanQuantumAtMaxPrice * r / (1 - Math.pow(1 + r, -n))
     : 0;
 
-  const downpaymentTotal = maxPrice * DOWNPAYMENT_PCT;
+  const downpaymentTotal = maxPrice * downpaymentPct;
   const minCash = maxPrice * minCashPct;
-  const cpfOrCashPortion = maxPrice * (DOWNPAYMENT_PCT - minCashPct);
+  const cpfOrCashPortion = maxPrice * (downpaymentPct - minCashPct);
   const cpfApplied = Math.min(totalOA, cpfOrCashPortion);
   const shortfall = cpfOrCashPortion - cpfApplied;
   const totalCashNeeded = minCash + shortfall;
 
   /* --- Render main results --- */
   document.getElementById('resMaxPriceLabel').textContent =
-    propertyType === 'hdb' ? 'Estimated maximum resale HDB flat price' :
-    propertyType === 'ec'  ? 'Estimated maximum EC price' :
-                              'Estimated maximum resale private property price';
+    propertyType === 'hdb' ? 'Estimated maximum resale HDB flat price' : 'Estimated maximum EC price';
   document.getElementById('resMaxPrice').textContent = fmt(maxPrice);
   document.getElementById('resMaxPriceRange').textContent =
     `Range: ${fmt(maxPrice*0.9)} – ${fmt(maxPrice)}`;
@@ -438,14 +556,15 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
       `Limited by your cash on hand, not your income — based on income alone you could service up to ${fmt(availableForMortgage)}/month, but your cash + CPF only stretch to a ${fmt(maxPrice)} purchase.`;
   } else {
     document.getElementById('resMonthlyNote').textContent = usesHdbLoan
-      ? `At the HDB concessionary rate of ${(HDB_LOAN_RATE*100).toFixed(1)}% p.a. (fixed — no stress-test needed since this rate doesn't float), capped by ${cappedByLabel} of your assessable income.`
-      : `At the max loan qualified under a ${(STRESS_TEST_RATE*100).toFixed(0)}% p.a. MAS stress-test rate, capped by ${cappedByLabel} of your assessable income. Your actual instalment may be lower once a bank quotes an actual rate.`;
+      ? `At the HDB concessionary rate of ${loanRate*100} % p.a. (fixed — no stress-test needed since this rate doesn't float), capped by ${cappedByLabel} of your assessable income.`
+      : `At the max loan qualified under a ${loanRate*100}% p.a. rate, capped by ${cappedByLabel} of your assessable income. Your actual instalment may be lower once a bank quotes an actual rate.`;
   }
   document.getElementById('resCash').textContent = fmt(totalCashNeeded);
   document.getElementById('resDownpayment').textContent = fmt(downpaymentTotal);
+  document.getElementById('downpaymentPctLabel').textContent = (downpaymentPct*100).toFixed(0);
   const cashHint = usesHdbLoan
-    ? 'HDB loans have no minimum cash requirement — the full 25% can be paid via CPF OA (and/or cash) if you have enough.'
-    : 'Min. 5% cash, remaining 20% via CPF OA or cash.';
+    ? `HDB loans have no minimum cash requirement — the full ${(downpaymentPct*100).toFixed(0)}% can be paid via CPF OA (and/or cash) if you have enough.`
+    : `Min. ${(minCashPct*100).toFixed(0)}% cash, remaining ${((downpaymentPct-minCashPct)*100).toFixed(0)}% via CPF OA or cash.`;
   if (cashProvided) {
     const spare = cashOnHand - totalCashNeeded;
     document.getElementById('resDownpaymentNote').textContent = cashBinding
@@ -457,10 +576,9 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
   document.getElementById('resCpfApplied').textContent = fmt(cpfApplied);
 
   document.getElementById('assumptionsNote').textContent = (usesHdbLoan
-    ? `Based on a ${tenureYears}-year loan tenure (max loan age cut-off of ${MAX_LOAN_AGE}), ${(LTV*100).toFixed(0)}% loan-to-value, and the HDB concessionary loan rate of ${(HDB_LOAN_RATE*100).toFixed(1)}% p.a., capped by MSR at 30% of your assessable income.`
-    : msrApplies
-      ? `Based on a ${tenureYears}-year loan tenure (max loan age cut-off of ${MAX_LOAN_AGE}), ${(LTV*100).toFixed(0)}% loan-to-value, and a 4% p.a. stress-test rate — capped by the tighter of MSR (30%) and TDSR (55%) of your assessable income.`
-      : `Based on a ${tenureYears}-year loan tenure (assuming a maximum loan age cut-off of ${MAX_LOAN_AGE}), a ${(LTV*100).toFixed(0)}% loan-to-value bank loan, and a 4% p.a. stress-test rate used purely to size your maximum loan quantum — not your actual quoted rate, capped by TDSR at 55% of your assessable income.`)
+    ? `Based on a ${tenureYears}-year loan tenure, ${(ltv*100).toFixed(0)}% loan-to-value, and the HDB concessionary loan rate of ${loanRate*100}% p.a., capped by MSR at 30% of your assessable income.`
+    : `Based on a ${tenureYears}-year loan tenure, ${(ltv*100).toFixed(0)}% loan-to-value, and a ${loanRate*100}% p.a. interest rate — capped by the tighter of MSR (30%) and TDSR (55%) of your assessable income.`)
+    + ` These financing variables can be adjusted above if you want to test a different scenario.`
     + (cashBinding ? ` Your final estimate above is capped by your cash on hand rather than your income.` : '');
 
   /* --- HDB loan eligibility note (income ceiling) --- */
@@ -482,23 +600,23 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
   /* --- Target price comparison --- */
   const fitBox = document.getElementById('fitBox');
   if (targetPrice){
-    const targetLoan = targetPrice * LTV;
+    const targetLoan = targetPrice * ltv;
     const instalmentAtTarget = targetLoan * r / (1 - Math.pow(1 + r, -n));
     const incomeFits = instalmentAtTarget <= availableForMortgage + 1;
 
     // Cash top-up breakdown at the target price — computed regardless of whether
     // cash-on-hand was entered, since this answers "how much cash do I need to
     // top up" directly, using whatever CPF OA was provided.
-    const downpaymentAtTarget = targetPrice * DOWNPAYMENT_PCT;
+    const downpaymentAtTarget = targetPrice * downpaymentPct;
     const minCashAtTarget = targetPrice * minCashPct;
-    const cpfOrCashAtTarget = targetPrice * (DOWNPAYMENT_PCT - minCashPct);
+    const cpfOrCashAtTarget = targetPrice * (downpaymentPct - minCashPct);
     const cpfAppliedAtTarget = Math.min(totalOA, cpfOrCashAtTarget);
     const cashNeededAtTarget = minCashAtTarget + (cpfOrCashAtTarget - cpfAppliedAtTarget);
 
     let cashFits = true;
     if (cashProvided) cashFits = cashNeededAtTarget <= cashOnHand + 1;
 
-    const breakdown = `<div class="target-breakdown"><strong>At ${fmt(targetPrice)}:</strong> total downpayment is ${fmt(downpaymentAtTarget)} (25%). ` +
+    const breakdown = `<div class="target-breakdown"><strong>At ${fmt(targetPrice)}:</strong> total downpayment is ${fmt(downpaymentAtTarget)} (${(downpaymentPct*100).toFixed(0)}%). ` +
       `Your CPF OA covers ${fmt(cpfAppliedAtTarget)}, leaving <strong>${fmt(cashNeededAtTarget)} in cash to top up</strong>.` +
       (cashProvided
         ? (cashFits
@@ -538,7 +656,7 @@ document.getElementById('calcForm').addEventListener('submit', function(e){
 
   lastResults = {
     maxPrice, maxPriceLow: maxPrice*0.9, monthlyMortgage: monthlyAtMaxPrice,
-    totalCashNeeded, downpaymentTotal, cpfApplied, tenureYears, targetPrice,
+    totalCashNeeded, downpaymentTotal, downpaymentPct: (downpaymentPct*100).toFixed(0), cpfApplied, tenureYears, targetPrice,
     hdbPrice: hdbSkip ? null : hdbPrice,
     propertyType, loanType: usesHdbLoan ? 'HDB Concessionary Loan' : 'Bank Loan', cappedBy: cappedByLabel,
     cashOnHand: cashProvided ? cashOnHand : null, cashBinding
@@ -566,14 +684,14 @@ function generatePdf(lead){
     doc.setFontSize(12);
     let y = 40;
     const line = (label, val) => { doc.text(`${label}: ${val}`, 14, y); y += 8; };
-    const ptypeLabel = lastResults.propertyType === 'hdb' ? 'Resale HDB Flat' : lastResults.propertyType === 'ec' ? 'Exec Condo' : 'Resale Private Property';
+    const ptypeLabel = lastResults.propertyType === 'hdb' ? 'Resale HDB Flat' : 'Exec Condo';
     line('Property type', ptypeLabel);
     line('Loan type', lastResults.loanType);
     line('Estimated maximum property price', fmt(lastResults.maxPrice));
     line('Estimated price range', `${fmt(lastResults.maxPriceLow)} - ${fmt(lastResults.maxPrice)}`);
     line('Estimated monthly mortgage', fmt(lastResults.monthlyMortgage));
     line('Capped by', lastResults.cappedBy);
-    line('Estimated total downpayment (25%)', fmt(lastResults.downpaymentTotal));
+    line(`Estimated total downpayment (${lastResults.downpaymentPct}%)`, fmt(lastResults.downpaymentTotal));
     line('CPF OA applied toward downpayment', fmt(lastResults.cpfApplied));
     line('Estimated cash needed upfront', fmt(lastResults.totalCashNeeded));
     if (lastResults.cashOnHand !== null) line('Cash on hand stated', fmt(lastResults.cashOnHand));
