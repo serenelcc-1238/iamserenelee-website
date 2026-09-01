@@ -363,6 +363,30 @@ footer .container{display:flex;gap:44px;flex-wrap:wrap;}
 .legal-box strong{color:var(--navy-900);}
 .legal-box p:last-child{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);font-size:.75rem;}
 
+/* FAQ PAGE */
+.faq-disclaimer{background:var(--amber-bg);color:var(--amber-ink);border-radius:var(--radius);padding:16px 20px;font-size:.86rem;line-height:1.55;margin-bottom:34px;}
+.faq-toc{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+.faq-toc a{background:#fff;border:1px solid var(--line);padding:9px 18px;border-radius:999px;font-size:.85rem;font-weight:700;color:var(--navy-900);text-decoration:none;transition:border-color .15s;}
+.faq-toc a:hover{border-color:var(--gold-dark);}
+.faq-category{scroll-margin-top:90px;padding-top:10px;}
+.faq-category-head{display:flex;align-items:baseline;gap:12px;margin-bottom:22px;}
+.faq-category-head h2{font-size:1.55rem;margin:0;}
+.faq-category-count{color:var(--muted);font-size:.85rem;font-weight:600;}
+.faq-item{border:1px solid var(--line);border-radius:var(--radius);background:#fff;margin-bottom:14px;overflow:hidden;}
+.faq-item summary{padding:18px 22px;font-weight:700;font-family:'Fraunces',serif;font-size:1rem;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:16px;color:var(--navy-900);}
+.faq-item summary::-webkit-details-marker{display:none;}
+.faq-item summary .faq-plus{font-size:1.5rem;color:var(--gold-dark);flex-shrink:0;font-weight:400;line-height:1;transition:transform .15s;display:inline-block;}
+.faq-item[open] summary .faq-plus{transform:rotate(45deg);}
+.faq-answer{padding:0 22px 22px;color:var(--ink);font-size:.93rem;line-height:1.6;}
+.faq-answer p{margin:0 0 12px;}
+.faq-answer p:last-child{margin-bottom:0;}
+.faq-answer .faq-table-wrap{overflow-x:auto;margin:6px 0 16px;}
+.faq-answer table{width:100%;border-collapse:collapse;margin:0;font-size:.85rem;min-width:420px;}
+.faq-answer th,.faq-answer td{border:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top;}
+.faq-answer th{background:var(--cream-2);font-weight:700;color:var(--navy-900);}
+.faq-note{background:var(--amber-bg);color:var(--amber-ink);border-radius:10px;padding:10px 14px;font-size:.82rem;margin-top:2px;}
+.faq-section-divider{height:1px;background:var(--line);margin:44px 0;border:0;}
+
 /* FLOATING WHATSAPP */
 .fab-wa{
   position:fixed;bottom:20px;right:20px;z-index:60;
