@@ -1,7 +1,7 @@
 /**
  * Serene Lee website — lead capture webhook
  * ------------------------------------------
- * This script receives form submissions from iamserenelee.com (the main
+ * This script receives form submissions from sereneleeproperty.com (the main
  * calculator lead form AND the footer contact form) and appends each one
  * as a new row in this Google Sheet.
  *
