@@ -31,6 +31,13 @@
     "url": "https://www.era.com.sg",
     "telephone": "+65-6226-2000"
   },
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "450 Lorong 6 Toa Payoh, #03-01 ERA APAC Centre",
+    "addressLocality": "Singapore",
+    "postalCode": "319394",
+    "addressCountry": "SG"
+  },
   "identifier": "CEA Registration No. R027578Z"
 }
 </script>
@@ -53,7 +60,13 @@
       <a href="new-launches.html">New Launches</a>
       <a href="blog.html">Blog</a>
       <a href="faq.html">FAQ</a>
-      <a href="calculator.html">Affordability Calculator</a>
+      <div class="nav-dropdown">
+        <button type="button" class="nav-dropdown-toggle">Tools <span class="caret">&#9662;</span></button>
+        <div class="nav-dropdown-menu">
+          <a href="calculator.html">Affordability Calculator</a>
+          <a href="upgrade-checklist.html">Upgrade Checklist</a>
+        </div>
+      </div>
       <a href="testimonials.html" class="active">Testimonials</a>
       <a href="contact.html">Contact</a>
     </nav>
@@ -101,5 +114,6 @@
 </a>
 
 <script src="main.js"></script>
+<script src="chatbot.js"></script>
 </body>
 </html>
